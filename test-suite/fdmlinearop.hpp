@@ -42,6 +42,7 @@ public:
     static void testFdmHestonHullWhiteOp();
     static void testBiCGstab();
     static void testGMRES();
+    static void testPSOR();
     static void testCrankNicolsonWithDamping();
     static void testSpareMatrixReference();
     static void testSparseMatrixZeroAssignment();

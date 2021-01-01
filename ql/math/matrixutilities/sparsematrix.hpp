@@ -69,19 +69,25 @@ namespace QuantLib {
     typedef boost::numeric::ublas::matrix_reference<SparseMatrix>
         SparseMatrixReference;
 
+    inline Real prod_i(const SparseMatrix& A, const Array& x, Size i) {
+        Real t=0;
+
+        if (i < A.filled1()-1) {
+			const Size begin = A.index1_data()[i];
+			const Size end   = A.index1_data()[i+1];
+			for (Size j=begin; j < end; ++j)
+				t += A.value_data()[j]*x[A.index2_data()[j]];
+        }
+
+        return t;
+    }
+
     inline Disposable<Array> prod(const SparseMatrix& A, const Array& x) {
         Array b(x.size(), 0.0);
 
-        for (Size i=0; i < A.filled1()-1; ++i) {
-            const Size begin = A.index1_data()[i];
-            const Size end   = A.index1_data()[i+1];
-            Real t=0;
-            for (Size j=begin; j < end; ++j) {
-                t += A.value_data()[j]*x[A.index2_data()[j]];
-            }
+        for (Size i=0; i < A.filled1()-1; ++i)
+        	b[i] = prod_i(A, x, i);
 
-            b[i]=t;
-        }
         return b;
     }
 }
