@@ -24,6 +24,8 @@
 #ifndef quantlib_psor_hpp
 #define quantlib_psor_hpp
 
+#include <ql/qldefines.hpp>
+
 #if !defined(QL_NO_UBLAS_SUPPORT)
 
 #include <ql/functional.hpp>

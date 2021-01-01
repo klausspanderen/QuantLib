@@ -50,7 +50,7 @@ namespace QuantLib {
 
         const Array y = (proj_)
             ? proj_(Array(n, 0.0))
-            : Array(n, std::numeric_limits<Real>::lowest());
+            : Array(n, -std::numeric_limits<Real>::max());
 
         Real error = Norm2(b - prod(A_, x))/bnorm2;
 

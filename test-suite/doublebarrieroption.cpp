@@ -681,8 +681,10 @@ test_suite* DoubleBarrierOptionTest::suite(SpeedLevel speed) {
 
 test_suite* DoubleBarrierOptionTest::experimental() {
     test_suite* suite = BOOST_TEST_SUITE("DoubleBarrier_experimental");
+#if !defined(QL_NO_UBLAS_SUPPORT)
     suite->add(QUANTLIB_TEST_CASE(
                       &DoubleBarrierOptionTest::testVannaVolgaDoubleBarrierValues));
+#endif
     suite->add(QUANTLIB_TEST_CASE(
                    &DoubleBarrierOptionTest::testMonteCarloDoubleBarrierWithAnalytical));
     return suite;

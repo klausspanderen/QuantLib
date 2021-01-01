@@ -1308,7 +1308,9 @@ test_suite* BarrierOptionTest::suite() {
 test_suite* BarrierOptionTest::experimental() {
     test_suite* suite = BOOST_TEST_SUITE("Barrier option experimental tests");
     suite->add(QUANTLIB_TEST_CASE(&BarrierOptionTest::testPerturbative));
+#if !defined(QL_NO_UBLAS_SUPPORT)
     suite->add(QUANTLIB_TEST_CASE(
                       &BarrierOptionTest::testVannaVolgaSimpleBarrierValues));
+#endif
     return suite;
 }

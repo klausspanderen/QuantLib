@@ -601,7 +601,6 @@ void AmericanOptionTest::testFdProjectionMethod() {
         ext::make_shared<AmericanExercise>(today, maturityDate)
     );
 
-    const Size xGrid = 21;
     const Size tGrid = 100;
     option.setPricingEngine(
         ext::make_shared<FdBlackScholesVanillaEngine>(
@@ -638,8 +637,9 @@ test_suite* AmericanOptionTest::suite() {
     suite->add(QUANTLIB_TEST_CASE(&AmericanOptionTest::testFdAmericanGreeks));
     // FLOATING_POINT_EXCEPTION
     suite->add(QUANTLIB_TEST_CASE(&AmericanOptionTest::testFdShoutGreeks));
+#ifndef QL_NO_UBLAS_SUPPORT
     suite->add(QUANTLIB_TEST_CASE(&AmericanOptionTest::testFdProjectionMethod));
-
+#endif
     return suite;
 }
 

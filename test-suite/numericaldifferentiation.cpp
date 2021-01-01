@@ -332,9 +332,10 @@ test_suite* NumericalDifferentiationTest::suite() {
         &NumericalDifferentiationTest::testIrregularSchemeSecondOrder));
     suite->add(QUANTLIB_TEST_CASE(
         &NumericalDifferentiationTest::testDerivativesOfSineFunction));
+#if !defined(QL_NO_UBLAS_SUPPORT)
     suite->add(QUANTLIB_TEST_CASE(
         &NumericalDifferentiationTest::testCoefficientBasedOnVandermonde));
-
+#endif
     return suite;
 }
 
