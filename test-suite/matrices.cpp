@@ -658,8 +658,8 @@ void MatricesTest::testIterativeSolvers() {
 #if !defined(QL_NO_UBLAS_SUPPORT)
     SparseMatrix sm(3,3);
     for (Size i=0; i < 3; ++i)
-    	for (Size j=0; j <3; ++j)
-    		sm(i,j) = M1[i][j];
+        for (Size j=0; j <3; ++j)
+            sm(i,j) = M1[i][j];
     const Array m = PSOR(sm, 1.5, 1000, relTol).solve(b).x;
     if (norm2(M1*m-b)/norm2(b) > relTol) {
         BOOST_FAIL("Failed to calculate inverse using PSOR"

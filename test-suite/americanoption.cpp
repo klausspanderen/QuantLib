@@ -573,7 +573,7 @@ void AmericanOptionTest::testFdShoutGreeks() {
 
 void AmericanOptionTest::testFdProjectionMethod() {
     BOOST_TEST_MESSAGE(
-    	"Testing finite-differences projection method for American options...");
+        "Testing finite-differences projection method for American options...");
 
     // example taken from
     // Fabien Le Floc'h: TR-BDF2 for stable American Option Pricing
@@ -584,42 +584,42 @@ void AmericanOptionTest::testFdProjectionMethod() {
     const DayCounter dc = Actual365Fixed();
 
     const ext::shared_ptr<BlackScholesProcess> bsProcess =
-    	ext::make_shared<BlackScholesProcess>(
-			Handle<Quote>(ext::make_shared<SimpleQuote>(100.0)),
-			Handle<YieldTermStructure>(
-				ext::make_shared<FlatForward>(today, 0.05, dc)),
-			Handle<BlackVolTermStructure>(
-				ext::make_shared<BlackConstantVol>(
-					today, NullCalendar(),
-					Handle<Quote>(ext::make_shared<SimpleQuote>(0.2)), dc)
-			)
-		);
+        ext::make_shared<BlackScholesProcess>(
+            Handle<Quote>(ext::make_shared<SimpleQuote>(100.0)),
+            Handle<YieldTermStructure>(
+                ext::make_shared<FlatForward>(today, 0.05, dc)),
+            Handle<BlackVolTermStructure>(
+                ext::make_shared<BlackConstantVol>(
+                    today, NullCalendar(),
+                    Handle<Quote>(ext::make_shared<SimpleQuote>(0.2)), dc)
+            )
+        );
 
     const Date maturityDate = today + Period(1, Years);
     VanillaOption option(
-    	ext::make_shared<PlainVanillaPayoff>(Option::Put, 100.0),
-		ext::make_shared<AmericanExercise>(today, maturityDate)
+        ext::make_shared<PlainVanillaPayoff>(Option::Put, 100.0),
+        ext::make_shared<AmericanExercise>(today, maturityDate)
     );
 
     const Size xGrid = 21;
     const Size tGrid = 100;
-	option.setPricingEngine(
-		ext::make_shared<FdBlackScholesVanillaEngine>(
-			bsProcess, tGrid, 21, 0, FdmSchemeDesc::CrankNicolsonPSOR())
+    option.setPricingEngine(
+        ext::make_shared<FdBlackScholesVanillaEngine>(
+            bsProcess, tGrid, 21, 0, FdmSchemeDesc::CrankNicolsonPSOR())
 
-	);
-	const Real calculated = option.NPV();
-	const Real expected = 6.03525647720619318;
+    );
+    const Real calculated = option.NPV();
+    const Real expected = 6.03525647720619318;
 
-	const Real tol = 0.0001;
+    const Real tol = 0.0001;
     const Real error = std::fabs(calculated-expected);
     if (error > tol) {
-    	BOOST_ERROR(
-    		"failed to reproduce second order convergence in delta T for PSOR"
-			<< "\n  calculated : " << calculated
-			<< "\n  expected   : " << expected
-			<< "\n  error      : " << error
-			<< "\n  tolerance  : " << tol);
+        BOOST_ERROR(
+            "failed to reproduce second order convergence in delta T for PSOR"
+            << "\n  calculated : " << calculated
+            << "\n  expected   : " << expected
+            << "\n  error      : " << error
+            << "\n  tolerance  : " << tol);
     }
 }
 

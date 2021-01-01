@@ -51,8 +51,8 @@ namespace QuantLib {
             Real relTol = 1e-8,
             ImplicitEulerScheme::SolverType solverType
                 = ImplicitEulerScheme::BiCGstab,
-			const ext::shared_ptr<FdmStepConditionComposite>& stepConditions =
-				ext::shared_ptr<FdmStepConditionComposite>());
+            const ext::shared_ptr<FdmStepConditionComposite>& stepConditions =
+                ext::shared_ptr<FdmStepConditionComposite>());
 
         void step(array_type& a, Time t);
         void setStep(Time dt);

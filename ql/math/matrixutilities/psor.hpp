@@ -30,18 +30,18 @@
 #include <ql/math/matrixutilities/sparsematrix.hpp>
 
 namespace QuantLib {
-	struct PSORResult {
-		Size iterations;
-		Real error;
-		Array x;
-	};
+    struct PSORResult {
+        Size iterations;
+        Real error;
+        Array x;
+    };
 
     class PSOR  {
       public:
         typedef ext::function<Disposable<Array>(const Array&)> Projection;
 
         PSOR(const SparseMatrix& A,
-        	 Real omega, Size maxIter, Real relTol,
+             Real omega, Size maxIter, Real relTol,
              const Projection& proj = Projection());
 
         PSORResult solve(const Array& b, const Array& x0 = Array()) const;

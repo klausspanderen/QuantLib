@@ -73,10 +73,10 @@ namespace QuantLib {
         Real t=0;
 
         if (i < A.filled1()-1) {
-			const Size begin = A.index1_data()[i];
-			const Size end   = A.index1_data()[i+1];
-			for (Size j=begin; j < end; ++j)
-				t += A.value_data()[j]*x[A.index2_data()[j]];
+            const Size begin = A.index1_data()[i];
+            const Size end   = A.index1_data()[i+1];
+            for (Size j=begin; j < end; ++j)
+                t += A.value_data()[j]*x[A.index2_data()[j]];
         }
 
         return t;
@@ -86,7 +86,7 @@ namespace QuantLib {
         Array b(x.size(), 0.0);
 
         for (Size i=0; i < A.filled1()-1; ++i)
-        	b[i] = prod_i(A, x, i);
+            b[i] = prod_i(A, x, i);
 
         return b;
     }

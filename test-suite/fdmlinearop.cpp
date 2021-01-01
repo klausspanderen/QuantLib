@@ -1344,7 +1344,7 @@ void FdmLinearOpTest::testPSOR() {
     const Array x = PSOR(a, 1.5, n*m, tol).solve(b).x;
 
     const Real error =
-    	std::sqrt(DotProduct(b-axpy(a, x), b-axpy(a, x))/DotProduct(b,b));
+        std::sqrt(DotProduct(b-axpy(a, x), b-axpy(a, x))/DotProduct(b,b));
 
     if (error > tol) {
         BOOST_FAIL("Error calculating the inverse using BiCGstab" <<

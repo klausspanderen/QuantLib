@@ -29,76 +29,76 @@
 
 namespace QuantLib {
 
-	namespace {
-		ext::shared_ptr<FdmStepConditionComposite> filterExerciseConditions(
-			const ext::shared_ptr<FdmStepConditionComposite>& stepConditions) {
+    namespace {
+        ext::shared_ptr<FdmStepConditionComposite> filterExerciseConditions(
+            const ext::shared_ptr<FdmStepConditionComposite>& stepConditions) {
 
-			typedef FdmStepConditionComposite::Conditions Conditions;
+            typedef FdmStepConditionComposite::Conditions Conditions;
 
-			const Conditions conditions = (stepConditions)
-					? stepConditions->conditions() : Conditions();
+            const Conditions conditions = (stepConditions)
+                    ? stepConditions->conditions() : Conditions();
 
-			Conditions exerciseConditions;
-			for (Conditions::const_iterator iter = conditions.begin();
-				 iter != conditions.end(); ++iter) {
+            Conditions exerciseConditions;
+            for (Conditions::const_iterator iter = conditions.begin();
+                 iter != conditions.end(); ++iter) {
 
-				const ext::shared_ptr<FdmStepConditionComposite> scc =
-					ext::dynamic_pointer_cast<FdmStepConditionComposite>(*iter);
-				if (scc) {
-					const Conditions c =
-						filterExerciseConditions(scc)->conditions();
-					exerciseConditions.insert(
-						exerciseConditions.end(), c.begin(), c.end());
-				}
+                const ext::shared_ptr<FdmStepConditionComposite> scc =
+                    ext::dynamic_pointer_cast<FdmStepConditionComposite>(*iter);
+                if (scc) {
+                    const Conditions c =
+                        filterExerciseConditions(scc)->conditions();
+                    exerciseConditions.insert(
+                        exerciseConditions.end(), c.begin(), c.end());
+                }
 
-				if (ext::dynamic_pointer_cast<FdmAmericanStepCondition>(*iter)
-					|| ext::dynamic_pointer_cast<FdmBermudanStepCondition>(*iter))
-					exerciseConditions.push_back(*iter);
-			}
+                if (ext::dynamic_pointer_cast<FdmAmericanStepCondition>(*iter)
+                    || ext::dynamic_pointer_cast<FdmBermudanStepCondition>(*iter))
+                    exerciseConditions.push_back(*iter);
+            }
 
-			return ext::make_shared<FdmStepConditionComposite>(
-				std::list<std::vector<Time> >(),
-				exerciseConditions);
-		}
+            return ext::make_shared<FdmStepConditionComposite>(
+                std::list<std::vector<Time> >(),
+                exerciseConditions);
+        }
 
-		Disposable<Array> applyTo(
-			const ext::shared_ptr<FdmStepConditionComposite>& conditions,
-			const Array& u, Time t) {
+        Disposable<Array> applyTo(
+            const ext::shared_ptr<FdmStepConditionComposite>& conditions,
+            const Array& u, Time t) {
 
-			Array v(u);
-			conditions->applyTo(v, t);
+            Array v(u);
+            conditions->applyTo(v, t);
 
-			return v;
-		}
-	}
+            return v;
+        }
+    }
 
     ImplicitEulerScheme::ImplicitEulerScheme(
-    	const ext::shared_ptr<FdmLinearOpComposite>& map,
-	    const bc_set& bcSet,
-	    Real relTol,
-	    SolverType solverType,
-		const ext::shared_ptr<FdmStepConditionComposite>& stepConditions)
+        const ext::shared_ptr<FdmLinearOpComposite>& map,
+        const bc_set& bcSet,
+        Real relTol,
+        SolverType solverType,
+        const ext::shared_ptr<FdmStepConditionComposite>& stepConditions)
         : dt_(Null<Real>()),
-		  iterations_(ext::make_shared<Size>(0U)),
-		  relTol_(relTol),
-		  map_(map),
-		  bcSet_(bcSet),
-		  solverType_(solverType),
-		  stepConditions_(stepConditions) {}
+          iterations_(ext::make_shared<Size>(0U)),
+          relTol_(relTol),
+          map_(map),
+          bcSet_(bcSet),
+          solverType_(solverType),
+          stepConditions_(stepConditions) {}
 
     Disposable<Array> ImplicitEulerScheme::apply(const Array& r, Real theta) const {
         return r - (theta*dt_)*map_->apply(r);
     }
 
 #if !defined(QL_NO_UBLAS_SUPPORT)
-	Disposable<SparseMatrix>
-	ImplicitEulerScheme::applyToSparseMatrix(Real theta) const {
-		SparseMatrix m((-theta*dt_)*map_->toMatrix());
-		for (Size i=0; i < m.size1(); ++i)
-			m(i,i) += 1.0;
+    Disposable<SparseMatrix>
+    ImplicitEulerScheme::applyToSparseMatrix(Real theta) const {
+        SparseMatrix m((-theta*dt_)*map_->toMatrix());
+        for (Size i=0; i < m.size1(); ++i)
+            m(i,i) += 1.0;
 
-		return m;
-	}
+        return m;
+    }
 #endif
 
     void ImplicitEulerScheme::step(array_type& a, Time t) {
@@ -116,52 +116,52 @@ namespace QuantLib {
 
         if (solverType_ == PSOR) {
 #if !defined(QL_NO_UBLAS_SUPPORT)
-        	const ext::shared_ptr<FdmStepConditionComposite> exerciseConditions(
-        		filterExerciseConditions(stepConditions_));
+            const ext::shared_ptr<FdmStepConditionComposite> exerciseConditions(
+                filterExerciseConditions(stepConditions_));
 
-			const PSOR::Projection proj(
-				ext::bind(&applyTo, exerciseConditions, _1, t));
+            const PSOR::Projection proj(
+                ext::bind(&applyTo, exerciseConditions, _1, t));
 
-			const PSORResult result =
-				QuantLib::PSOR(applyToSparseMatrix(theta),
-					1.5, 100000, relTol_, proj).solve(a, a);
+            const PSORResult result =
+                QuantLib::PSOR(applyToSparseMatrix(theta),
+                    1.5, 100000, relTol_, proj).solve(a, a);
 
-			(*iterations_) += result.iterations;
-			a = result.x;
+            (*iterations_) += result.iterations;
+            a = result.x;
 #else
-			QL_FAIL("PSOR is not supported due to missing boost ublas");
+            QL_FAIL("PSOR is not supported due to missing boost ublas");
 #endif
         }
         else if (map_->size() == 1) {
             a = map_->solve_splitting(0, a, -theta*dt_);
         }
-		else {
-			const ext::function<Disposable<Array>(const Array&)> applyF(
-				ext::bind(&ImplicitEulerScheme::apply, this, _1, theta));
+        else {
+            const ext::function<Disposable<Array>(const Array&)> applyF(
+                ext::bind(&ImplicitEulerScheme::apply, this, _1, theta));
 
-			const ext::function<Disposable<Array>(const Array&)>
-				preconditioner(ext::bind(
-					&FdmLinearOpComposite::preconditioner, map_, _1, -theta*dt_));
+            const ext::function<Disposable<Array>(const Array&)>
+                preconditioner(ext::bind(
+                    &FdmLinearOpComposite::preconditioner, map_, _1, -theta*dt_));
 
-			if (solverType_ == BiCGstab) {
-				const BiCGStabResult result =
-					QuantLib::BiCGstab(applyF, std::max(Size(10), a.size()),
-						relTol_, preconditioner).solve(a, a);
+            if (solverType_ == BiCGstab) {
+                const BiCGStabResult result =
+                    QuantLib::BiCGstab(applyF, std::max(Size(10), a.size()),
+                        relTol_, preconditioner).solve(a, a);
 
-				(*iterations_) += result.iterations;
-				a = result.x;
-			}
-			else if (solverType_ == GMRES) {
-				const GMRESResult result =
-					QuantLib::GMRES(applyF, std::max(Size(10), a.size() / 10U), relTol_,
-									preconditioner)
-						.solve(a, a);
+                (*iterations_) += result.iterations;
+                a = result.x;
+            }
+            else if (solverType_ == GMRES) {
+                const GMRESResult result =
+                    QuantLib::GMRES(applyF, std::max(Size(10), a.size() / 10U), relTol_,
+                                    preconditioner)
+                        .solve(a, a);
 
-				(*iterations_) += result.errors.size();
-				a = result.x;
-			}
-			else
-				QL_FAIL("unknown/illegal solver type");
+                (*iterations_) += result.errors.size();
+                a = result.x;
+            }
+            else
+                QL_FAIL("unknown/illegal solver type");
         }
         bcSet_.applyAfterSolving(a);
     }

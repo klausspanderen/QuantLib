@@ -139,9 +139,9 @@ namespace QuantLib {
           case FdmSchemeDesc::CrankNicolsonType:
             {
               CrankNicolsonScheme cnEvolver((schemeDesc_.mu == 0.0)
-				? CrankNicolsonScheme(schemeDesc_.theta, map_, bcSet_)
-				: CrankNicolsonScheme(schemeDesc_.theta, map_, bcSet_,
-						schemeDesc_.mu, ImplicitEulerScheme::PSOR, condition_));
+                ? CrankNicolsonScheme(schemeDesc_.theta, map_, bcSet_)
+                : CrankNicolsonScheme(schemeDesc_.theta, map_, bcSet_,
+                    schemeDesc_.mu, ImplicitEulerScheme::PSOR, condition_));
               FiniteDifferenceModel<CrankNicolsonScheme>
                   cnModel(cnEvolver, condition_->stoppingTimes());
               cnModel.rollback(rhs, dampingTo, to, steps, *condition_);

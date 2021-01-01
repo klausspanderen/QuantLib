@@ -27,7 +27,7 @@ namespace QuantLib {
         const bc_set& bcSet,
         Real relTol,
         ImplicitEulerScheme::SolverType solverType,
-		const ext::shared_ptr<FdmStepConditionComposite>& stepConditions)
+        const ext::shared_ptr<FdmStepConditionComposite>& stepConditions)
     : dt_(Null<Real>()),
       theta_(theta),
       explicit_(ext::make_shared<ExplicitEulerScheme>(map, bcSet)),
