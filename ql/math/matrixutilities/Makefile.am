@@ -11,6 +11,7 @@ this_include_HEADERS = \
 	getcovariance.hpp \
 	gmres.hpp \
 	pseudosqrt.hpp \
+	psor.hpp \
 	qrdecomposition.hpp \
 	sparseilupreconditioner.hpp \
 	sparsematrix.hpp \
@@ -27,6 +28,7 @@ cpp_files = \
 	getcovariance.cpp \
 	gmres.cpp \
 	pseudosqrt.cpp \
+	psor.cpp \
 	qrdecomposition.cpp \
 	sparseilupreconditioner.cpp \
 	svd.cpp \

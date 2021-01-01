@@ -35,6 +35,7 @@ class AmericanOptionTest {
     static void testFdValues();
     static void testFdAmericanGreeks();
     static void testFdShoutGreeks();
+    static void testFdProjectionMethod();
     static boost::unit_test_framework::test_suite* suite();
 };
 

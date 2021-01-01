@@ -29,12 +29,13 @@
 #include <ql/methods/finitedifferences/operatortraits.hpp>
 #include <ql/methods/finitedifferences/operators/fdmlinearopcomposite.hpp>
 #include <ql/methods/finitedifferences/schemes/boundaryconditionschemehelper.hpp>
+#include <ql/methods/finitedifferences/stepconditions/fdmstepconditioncomposite.hpp>
 
 namespace QuantLib {
 
     class ImplicitEulerScheme {
       public:
-        enum SolverType { BiCGstab, GMRES };
+        enum SolverType {BiCGstab, GMRES, PSOR};
 
         // typedefs
         typedef OperatorTraits<FdmLinearOp> traits;
@@ -48,7 +49,9 @@ namespace QuantLib {
             const ext::shared_ptr<FdmLinearOpComposite>& map,
             const bc_set& bcSet = bc_set(),
             Real relTol = 1e-8,
-            SolverType solverType = BiCGstab);
+            SolverType solverType = BiCGstab,
+			const ext::shared_ptr<FdmStepConditionComposite>& stepConditions =
+				ext::shared_ptr<FdmStepConditionComposite>());
 
         void step(array_type& a, Time t);
         void setStep(Time dt);
@@ -59,7 +62,10 @@ namespace QuantLib {
         void step(array_type& a, Time t, Real theta);
 
         Disposable<Array> apply(const Array& r, Real theta) const;
-          
+
+#if !defined(QL_NO_UBLAS_SUPPORT)
+        Disposable<SparseMatrix> applyToSparseMatrix(Real theta) const;
+#endif
         Time dt_;
         ext::shared_ptr<Size> iterations_;
 
@@ -67,6 +73,7 @@ namespace QuantLib {
         const ext::shared_ptr<FdmLinearOpComposite> map_;
         const BoundaryConditionSchemeHelper bcSet_;
         const SolverType solverType_;
+        const ext::shared_ptr<FdmStepConditionComposite> stepConditions_;
     };
 }
 

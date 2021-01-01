@@ -47,6 +47,7 @@ namespace QuantLib {
         // some default scheme descriptions
         static FdmSchemeDesc Douglas(); //same as Crank-Nicolson in 1 dimension
         static FdmSchemeDesc CrankNicolson();
+        static FdmSchemeDesc CrankNicolsonPSOR(Real eps=1e-13);
         static FdmSchemeDesc ImplicitEuler();
         static FdmSchemeDesc ExplicitEuler();
         static FdmSchemeDesc CraigSneyd();

@@ -106,7 +106,7 @@ namespace QuantLib {
                    || exercise->type() == Exercise::Bermudan,
                    "exercise type is not supported");
         if (exercise->type() == Exercise::American) {
-            stepConditions.push_back(ext::shared_ptr<StepCondition<Array> >(
+            stepConditions.push_back(ext::shared_ptr<FdmAmericanStepCondition>(
                           new FdmAmericanStepCondition(mesher,calculator)));
         }
         else if (exercise->type() == Exercise::Bermudan) {

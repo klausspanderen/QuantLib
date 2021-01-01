@@ -41,7 +41,7 @@ namespace QuantLib {
     class FdmInnerValueCalculator;
     
     class FdmStepConditionComposite : public StepCondition<Array> {
-    public:
+      public:
         typedef std::list<ext::shared_ptr<StepCondition<Array> > > Conditions;
 
         FdmStepConditionComposite(
@@ -49,6 +49,7 @@ namespace QuantLib {
             const Conditions & conditions);
 
         void applyTo(Array& a, Time t) const;
+
         const std::vector<Time>& stoppingTimes() const;
         const Conditions& conditions() const;
 
@@ -64,7 +65,7 @@ namespace QuantLib {
              const Date& refDate,
              const DayCounter& dayCounter);
         
-    private:
+      private:
         std::vector<Time> stoppingTimes_;
         const Conditions conditions_;
     };

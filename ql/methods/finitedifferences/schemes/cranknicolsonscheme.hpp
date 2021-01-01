@@ -50,7 +50,9 @@ namespace QuantLib {
             const bc_set& bcSet = bc_set(),
             Real relTol = 1e-8,
             ImplicitEulerScheme::SolverType solverType
-                = ImplicitEulerScheme::BiCGstab);
+                = ImplicitEulerScheme::BiCGstab,
+			const ext::shared_ptr<FdmStepConditionComposite>& stepConditions =
+				ext::shared_ptr<FdmStepConditionComposite>());
 
         void step(array_type& a, Time t);
         void setStep(Time dt);

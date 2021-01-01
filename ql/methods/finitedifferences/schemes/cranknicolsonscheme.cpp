@@ -26,12 +26,13 @@ namespace QuantLib {
         const ext::shared_ptr<FdmLinearOpComposite> & map,
         const bc_set& bcSet,
         Real relTol,
-        ImplicitEulerScheme::SolverType solverType)
+        ImplicitEulerScheme::SolverType solverType,
+		const ext::shared_ptr<FdmStepConditionComposite>& stepConditions)
     : dt_(Null<Real>()),
       theta_(theta),
       explicit_(ext::make_shared<ExplicitEulerScheme>(map, bcSet)),
       implicit_(ext::make_shared<ImplicitEulerScheme>(
-          map, bcSet, relTol, solverType)) {
+          map, bcSet, relTol, solverType, stepConditions)) {
     }
 
     void CrankNicolsonScheme::step(array_type& a, Time t) {

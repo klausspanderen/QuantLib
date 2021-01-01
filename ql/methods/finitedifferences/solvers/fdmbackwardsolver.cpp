@@ -50,6 +50,10 @@ namespace QuantLib {
         return FdmSchemeDesc(FdmSchemeDesc::CrankNicolsonType, 0.5, 0.0);
     }
 
+    FdmSchemeDesc FdmSchemeDesc::CrankNicolsonPSOR(Real eps) {
+        return FdmSchemeDesc(FdmSchemeDesc::CrankNicolsonType, 0.5, eps);
+    }
+
     FdmSchemeDesc FdmSchemeDesc::CraigSneyd() {
         return FdmSchemeDesc(FdmSchemeDesc::CraigSneydType,0.5, 0.5);
     }
@@ -134,11 +138,13 @@ namespace QuantLib {
             break;
           case FdmSchemeDesc::CrankNicolsonType:
             {
-              CrankNicolsonScheme cnEvolver(schemeDesc_.theta, map_, bcSet_);
+              CrankNicolsonScheme cnEvolver((schemeDesc_.mu == 0.0)
+				? CrankNicolsonScheme(schemeDesc_.theta, map_, bcSet_)
+				: CrankNicolsonScheme(schemeDesc_.theta, map_, bcSet_,
+						schemeDesc_.mu, ImplicitEulerScheme::PSOR, condition_));
               FiniteDifferenceModel<CrankNicolsonScheme>
-                             cnModel(cnEvolver, condition_->stoppingTimes());
+                  cnModel(cnEvolver, condition_->stoppingTimes());
               cnModel.rollback(rhs, dampingTo, to, steps, *condition_);
-
             }
             break;
           case FdmSchemeDesc::CraigSneydType:
@@ -190,12 +196,12 @@ namespace QuantLib {
                 const FdmSchemeDesc trDesc
                     = FdmSchemeDesc::CraigSneyd();
 
-                const ext::shared_ptr<CraigSneydScheme> hsEvolver(
+                const ext::shared_ptr<CraigSneydScheme> csEvolver(
                     ext::make_shared<CraigSneydScheme>(
                         trDesc.theta, trDesc.mu, map_, bcSet_));
 
                 TrBDF2Scheme<CraigSneydScheme> trBDF2(
-                    schemeDesc_.theta, map_, hsEvolver, bcSet_,schemeDesc_.mu);
+                    schemeDesc_.theta, map_, csEvolver, bcSet_, schemeDesc_.mu);
 
                 FiniteDifferenceModel<TrBDF2Scheme<CraigSneydScheme> >
                    trBDF2Model(trBDF2, condition_->stoppingTimes());

@@ -39,6 +39,7 @@
 #include <ql/pricingengines/vanilla/analyticeuropeanengine.hpp>
 #include <ql/pricingengines/vanilla/mchestonhullwhiteengine.hpp>
 #include <ql/methods/finitedifferences/finitedifferencemodel.hpp>
+#include <ql/math/matrixutilities/psor.hpp>
 #include <ql/math/matrixutilities/gmres.hpp>
 #include <ql/math/matrixutilities/bicgstab.hpp>
 #include <ql/methods/finitedifferences/schemes/douglasscheme.hpp>
@@ -1322,6 +1323,38 @@ void FdmLinearOpTest::testBiCGstab() {
 #endif
 }
 
+void FdmLinearOpTest::testPSOR() {
+#if !defined(QL_NO_UBLAS_SUPPORT)
+    BOOST_TEST_MESSAGE(
+        "Testing projected successive over-relaxation algorithm...");
+
+    using namespace ext::placeholders;
+
+    const Size n=41, m=21;
+    const Real theta = 1.0;
+    const SparseMatrix a = createTestMatrix(n, m, theta);
+
+    Array b(n*m);
+    MersenneTwisterUniformRng rng(1234);
+    for (Size i=0; i < b.size(); ++i) {
+        b[i] = rng.next().value;
+    }
+
+    const Real tol = 1e-10;
+    const Array x = PSOR(a, 1.5, n*m, tol).solve(b).x;
+
+    const Real error =
+    	std::sqrt(DotProduct(b-axpy(a, x), b-axpy(a, x))/DotProduct(b,b));
+
+    if (error > tol) {
+        BOOST_FAIL("Error calculating the inverse using BiCGstab" <<
+                "\n tolerance:  " << tol <<
+                "\n error:      " << error);
+    }
+#endif
+}
+
+
 void FdmLinearOpTest::testGMRES() {
 #if !defined(QL_NO_UBLAS_SUPPORT)
     BOOST_TEST_MESSAGE("Testing GMRES algorithm...");
@@ -1775,6 +1808,7 @@ test_suite* FdmLinearOpTest::suite() {
     suite->add(QUANTLIB_TEST_CASE(&FdmLinearOpTest::testFdmHestonHullWhiteOp));
     suite->add(QUANTLIB_TEST_CASE(&FdmLinearOpTest::testBiCGstab));
     suite->add(QUANTLIB_TEST_CASE(&FdmLinearOpTest::testGMRES));
+    suite->add(QUANTLIB_TEST_CASE(&FdmLinearOpTest::testPSOR));
     suite->add(
         QUANTLIB_TEST_CASE(&FdmLinearOpTest::testCrankNicolsonWithDamping));
     suite->add(

@@ -28,6 +28,7 @@
 #include <ql/math/matrixutilities/pseudosqrt.hpp>
 #include <ql/math/matrixutilities/svd.hpp>
 #include <ql/math/matrixutilities/gmres.hpp>
+#include <ql/math/matrixutilities/psor.hpp>
 #include <ql/math/matrixutilities/bicgstab.hpp>
 #include <ql/math/matrixutilities/symmetricschurdecomposition.hpp>
 #include <ql/math/randomnumbers/mt19937uniformrng.hpp>
@@ -653,6 +654,19 @@ void MatricesTest::testIterativeSolvers() {
     b[0] = 1.0; b[1] = 0.5; b[2] = 3.0;
 
     const Real relTol = 1e4*QL_EPSILON;
+
+#if !defined(QL_NO_UBLAS_SUPPORT)
+    SparseMatrix sm(3,3);
+    for (Size i=0; i < 3; ++i)
+    	for (Size j=0; j <3; ++j)
+    		sm(i,j) = M1[i][j];
+    const Array m = PSOR(sm, 1.5, 1000, relTol).solve(b).x;
+    if (norm2(M1*m-b)/norm2(b) > relTol) {
+        BOOST_FAIL("Failed to calculate inverse using PSOR"
+                << "\n  rel error     : " << norm2(M1*m-b)/norm2(b)
+                << "\n  rel tolerance : " << relTol);
+    }
+#endif
 
     const Array x = BiCGstab(MatrixMult(M1), 3, relTol).solve(b).x;
     if (norm2(M1*x-b)/norm2(b) > relTol) {
