@@ -35,8 +35,8 @@ namespace QuantLib {
 
             typedef FdmStepConditionComposite::Conditions Conditions;
 
-            const Conditions conditions = (stepConditions)
-                    ? stepConditions->conditions() : Conditions();
+            const Conditions conditions =
+                (stepConditions) != 0 ? stepConditions->conditions() : Conditions();
 
             Conditions exerciseConditions;
             for (Conditions::const_iterator iter = conditions.begin();
@@ -44,15 +44,15 @@ namespace QuantLib {
 
                 const ext::shared_ptr<FdmStepConditionComposite> scc =
                     ext::dynamic_pointer_cast<FdmStepConditionComposite>(*iter);
-                if (scc) {
+                if (scc != 0) {
                     const Conditions c =
                         filterExerciseConditions(scc)->conditions();
                     exerciseConditions.insert(
                         exerciseConditions.end(), c.begin(), c.end());
                 }
 
-                if (ext::dynamic_pointer_cast<FdmAmericanStepCondition>(*iter)
-                    || ext::dynamic_pointer_cast<FdmBermudanStepCondition>(*iter))
+                if ((ext::dynamic_pointer_cast<FdmAmericanStepCondition>(*iter) != 0) ||
+                    (ext::dynamic_pointer_cast<FdmBermudanStepCondition>(*iter) != 0))
                     exerciseConditions.push_back(*iter);
             }
 
