@@ -392,6 +392,7 @@ set(QuantLib_SRC
     math/matrixutilities/getcovariance.cpp
     math/matrixutilities/gmres.cpp
     math/matrixutilities/pseudosqrt.cpp
+    math/matrixutilities/psor.cpp    
     math/matrixutilities/qrdecomposition.cpp
     math/matrixutilities/sparseilupreconditioner.cpp
     math/matrixutilities/svd.cpp
@@ -1499,6 +1500,7 @@ set(QuantLib_HDR
     math/matrixutilities/getcovariance.hpp
     math/matrixutilities/gmres.hpp
     math/matrixutilities/pseudosqrt.hpp
+    math/matrixutilities/psor.hpp    
     math/matrixutilities/qrdecomposition.hpp
     math/matrixutilities/sparseilupreconditioner.hpp
     math/matrixutilities/sparsematrix.hpp
