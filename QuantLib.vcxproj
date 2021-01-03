@@ -1060,6 +1060,7 @@
     <ClInclude Include="ql\math\matrixutilities\getcovariance.hpp" />
     <ClInclude Include="ql\math\matrixutilities\gmres.hpp" />
     <ClInclude Include="ql\math\matrixutilities\pseudosqrt.hpp" />
+    <ClInclude Include="ql\math\matrixutilities\psor.hpp" />
     <ClInclude Include="ql\math\matrixutilities\qrdecomposition.hpp" />
     <ClInclude Include="ql\math\matrixutilities\sparseilupreconditioner.hpp" />
     <ClInclude Include="ql\math\matrixutilities\sparsematrix.hpp" />
@@ -2252,6 +2253,7 @@
     <ClCompile Include="ql\math\matrixutilities\getcovariance.cpp" />
     <ClCompile Include="ql\math\matrixutilities\gmres.cpp" />
     <ClCompile Include="ql\math\matrixutilities\pseudosqrt.cpp" />
+    <ClCompile Include="ql\math\matrixutilities\psor.cpp" />
     <ClCompile Include="ql\math\matrixutilities\qrdecomposition.cpp" />
     <ClCompile Include="ql\math\matrixutilities\sparseilupreconditioner.cpp" />
     <ClCompile Include="ql\math\matrixutilities\svd.cpp" />

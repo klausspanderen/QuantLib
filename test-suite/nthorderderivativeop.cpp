@@ -35,7 +35,9 @@
 #include <ql/methods/finitedifferences/operators/fdmlinearoplayout.hpp>
 #include <ql/methods/finitedifferences/operators/fdmlinearopcomposite.hpp>
 #include <ql/methods/finitedifferences/operators/nthorderderivativeop.hpp>
+#include <ql/methods/finitedifferences/operators/firstderivativeop.hpp>
 #include <ql/methods/finitedifferences/operators/secondderivativeop.hpp>
+#include <ql/methods/finitedifferences/operators/secondordermixedderivativeop.hpp>
 #include <ql/methods/finitedifferences/solvers/fdmbackwardsolver.hpp>
 #include <ql/functional.hpp>
 #include <numeric>
@@ -698,6 +700,100 @@ void NthOrderDerivativeOpTest::testHigerOrderAndRichardsonExtrapolationg() {
     }
 }
 
+void NthOrderDerivativeOpTest::testCompareFirstDerivativeOpNonUniformGrid() {
+	BOOST_TEST_MESSAGE(
+		"Testing with FirstDerivativeOp on a non-uniform grid...");
+
+	Array xValues = Exp(Array(7, 0, 0.1));
+
+	const ext::shared_ptr<Fdm1dMesher> m
+		= ext::make_shared<Predefined1dMesher>(
+			std::vector<Real>(xValues.begin(), xValues.end()));
+
+	const ext::shared_ptr<FdmMesher> m1d(
+		ext::make_shared<FdmMesherComposite>(m));
+
+	const ext::shared_ptr<FirstDerivativeOp> fx
+		= ext::make_shared<FirstDerivativeOp>(0, m1d);
+
+	const ext::shared_ptr<NthOrderDerivativeOp> dx
+		= ext::make_shared<NthOrderDerivativeOp>(0, 1, 3, m1d);
+
+	const SparseMatrix fm = fx->toMatrix();
+	const SparseMatrix dm = dx->toMatrix();
+
+	for (Size i=1; i < m->size()-1; ++i) // different boundary conditions
+		for (Size j=0; j < m->size(); ++j)
+			BOOST_CHECK(std::fabs(fm(i, j)- dm(i, j)) < 1e-12);
+}
+
+void NthOrderDerivativeOpTest::testCompareFirstDerivativeOp2dUniformGrid() {
+	BOOST_TEST_MESSAGE(
+		"Testing with FirstDerivativeOp on a 2d uniform grid...");
+
+	const ext::shared_ptr<Fdm1dMesher> m1
+		= ext::make_shared<Uniform1dMesher>(0.0, 0.6, 5);
+	const ext::shared_ptr<Fdm1dMesher> m2
+		= ext::make_shared<Uniform1dMesher>(0.0, 1.6, 6);
+
+	const ext::shared_ptr<FdmMesher> mc(
+		ext::make_shared<FdmMesherComposite>(m1, m2));
+
+	const ext::shared_ptr<FdmLinearOpLayout> layout = mc->layout();
+
+	const Size n = layout->dim()[0];
+	const Size m = layout->dim()[1];
+
+	SparseMatrix fm = FirstDerivativeOp(0, mc).toMatrix();
+	SparseMatrix dm = NthOrderDerivativeOp(0, 1, 3, mc).toMatrix();
+
+	for (Size k=0; k < m; ++k) {
+		const Size idx = k*n;
+		for (Size i=1; i < n-1; ++i)
+			for (Size j=0; j < n*m; ++j)
+				BOOST_CHECK(std::fabs(fm(idx + i, j) - dm(idx + i, j)) < 1e-12);
+	}
+
+	fm = FirstDerivativeOp(1, mc).toMatrix();
+	dm = NthOrderDerivativeOp(1, 1, 3, mc).toMatrix();
+
+	for (Size i=n; i < n*(m-1); ++i)
+		for (Size j=0; j < n*m; ++j)
+			BOOST_CHECK(std::fabs(fm(i, j) - dm(i, j)) < 1e-12);
+}
+
+#include <iostream>
+
+void NthOrderDerivativeOpTest::testMixedSecondOrder9PointsOnUniformGrid() {
+	BOOST_TEST_MESSAGE(
+			"Testing nine points mixed second order "
+			"derivative operator on a uniform grid...");
+
+	const ext::shared_ptr<Fdm1dMesher> m
+		= ext::make_shared<Uniform1dMesher>(0.0, 0.6, 5);
+
+	const ext::shared_ptr<FdmMesher> mc(
+		ext::make_shared<FdmMesherComposite>(m, m));
+
+	const SparseMatrix cc =
+			prod(NthOrderDerivativeOp(0, 1, 3, mc).toMatrix(),
+				 NthOrderDerivativeOp(1, 1, 3, mc).toMatrix());
+
+	const SparseMatrix mm = SecondOrderMixedDerivativeOp(0,1,mc).toMatrix();
+
+	const Size n = m->size();
+
+	for (Size i=1; i < n-1; ++i)
+		for (Size j=1; j < n-1; ++j) {
+			const Size idx = i*n+j;
+			for (Size k=1; k < n-1; ++k)
+				for (Size l=1; l < n-1; ++l) {
+					const Size kdx = k*n+l;
+					BOOST_CHECK(std::fabs(mm(idx,kdx) - cc(idx,kdx)) < 1e-12);
+				}
+		}
+}
+
 #endif
 
 test_suite* NthOrderDerivativeOpTest::suite() {
@@ -729,6 +825,12 @@ test_suite* NthOrderDerivativeOpTest::suite() {
         &NthOrderDerivativeOpTest::testHigerOrderBSOptionPricing));
     suite->add(QUANTLIB_TEST_CASE(
         &NthOrderDerivativeOpTest::testHigerOrderAndRichardsonExtrapolationg));
+    suite->add(QUANTLIB_TEST_CASE(
+        &NthOrderDerivativeOpTest::testCompareFirstDerivativeOpNonUniformGrid));
+    suite->add(QUANTLIB_TEST_CASE(
+        &NthOrderDerivativeOpTest::testCompareFirstDerivativeOp2dUniformGrid));
+    suite->add(QUANTLIB_TEST_CASE(
+    	&NthOrderDerivativeOpTest::testMixedSecondOrder9PointsOnUniformGrid));
 
 #endif
 
