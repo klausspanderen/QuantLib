@@ -20,8 +20,10 @@
 #include "utilities.hpp"
 #include "nthorderderivativeop.hpp"
 
-#include <ql/math/comparison.hpp>
 #include <ql/pricingengines/blackformula.hpp>
+#include <ql/time/daycounters/actual365fixed.hpp>
+#include <ql/quotes/simplequote.hpp>
+#include <ql/math/comparison.hpp>
 #include <ql/math/initializers.hpp>
 #include <ql/math/richardsonextrapolation.hpp>
 #include <ql/math/matrixutilities/bicgstab.hpp>
@@ -32,14 +34,25 @@
 #include <ql/methods/finitedifferences/meshers/concentrating1dmesher.hpp>
 #include <ql/methods/finitedifferences/meshers/predefined1dmesher.hpp>
 #include <ql/methods/finitedifferences/meshers/fdmmeshercomposite.hpp>
+#include <ql/methods/finitedifferences/meshers/fdmhestonvariancemesher.hpp>
+#include <ql/methods/finitedifferences/meshers/fdmblackscholesmesher.hpp>
 #include <ql/methods/finitedifferences/operators/fdmlinearoplayout.hpp>
 #include <ql/methods/finitedifferences/operators/fdmlinearopcomposite.hpp>
 #include <ql/methods/finitedifferences/operators/nthorderderivativeop.hpp>
 #include <ql/methods/finitedifferences/operators/firstderivativeop.hpp>
 #include <ql/methods/finitedifferences/operators/secondderivativeop.hpp>
+#include <ql/methods/finitedifferences/stepconditions/fdmstepconditioncomposite.hpp>
 #include <ql/methods/finitedifferences/operators/secondordermixedderivativeop.hpp>
+#include <ql/methods/finitedifferences/utilities/fdminnervaluecalculator.hpp>
 #include <ql/methods/finitedifferences/solvers/fdmbackwardsolver.hpp>
+#include <ql/methods/finitedifferences/solvers/fdm2dimsolver.hpp>
+#include <ql/instruments/vanillaoption.hpp>
+#include <ql/pricingengines/vanilla/analytichestonengine.hpp>
 #include <ql/functional.hpp>
+
+#include <boost/numeric/ublas/banded.hpp>
+#include <boost/numeric/ublas/operation_sparse.hpp>
+#include <boost/numeric/ublas/matrix_proxy.hpp>
 #include <numeric>
 
 using namespace QuantLib;
@@ -762,8 +775,6 @@ void NthOrderDerivativeOpTest::testCompareFirstDerivativeOp2dUniformGrid() {
             BOOST_CHECK(std::fabs(fm(i, j) - dm(i, j)) < 1e-12);
 }
 
-#include <iostream>
-
 void NthOrderDerivativeOpTest::testMixedSecondOrder9PointsOnUniformGrid() {
     BOOST_TEST_MESSAGE(
             "Testing nine points mixed second order "
@@ -792,6 +803,182 @@ void NthOrderDerivativeOpTest::testMixedSecondOrder9PointsOnUniformGrid() {
                     BOOST_CHECK(std::fabs(mm(idx,kdx) - cc(idx,kdx)) < 1e-12);
                 }
         }
+}
+
+namespace {
+    class FdmHigherOrderHestonOp : public FdmLinearOpComposite {
+      public:
+        FdmHigherOrderHestonOp(
+            Size nx, Size nv,
+            const ext::shared_ptr<FdmMesher>& mesher,
+            const ext::shared_ptr<HestonProcess>& hestonProcess);
+        Size size() const { return 2; }
+
+        void setTime(Time t1, Time t2) {}
+
+        Disposable<array_type> apply(const array_type& r) const {
+            return prod(map_, r);
+        }
+
+        Disposable<Array> apply_mixed(const Array& r) const {
+            QL_FAIL("operator splitting is not supported");
+        }
+        Disposable<Array>
+            apply_direction(Size direction, const Array& r) const {
+            QL_FAIL("operator splitting is not supported");
+        }
+        Disposable<Array>
+            solve_splitting(Size direction, const Array& r, Real s) const {
+            QL_FAIL("operator splitting is not supported");
+        }
+        Disposable<Array> preconditioner(const Array& r, Real s) const {
+            Array u(r);
+            return u;
+        }
+        Disposable<std::vector<SparseMatrix> > toMatrixDecomp() const {
+            QL_FAIL("operator splitting is not supported");
+        }
+        Disposable<SparseMatrix> toMatrix() const {
+            SparseMatrix u(map_);
+            return u;
+        }
+      private:
+        SparseMatrix map_;
+    };
+
+    FdmHigherOrderHestonOp::FdmHigherOrderHestonOp(
+        Size nx, Size nv,
+        const ext::shared_ptr<FdmMesher>& mesher,
+        const ext::shared_ptr<HestonProcess>& process) {
+
+        const Real kappa = process->kappa();
+        const Real theta = process->theta();
+        const Real sigma = process->sigma();
+        const Real rho = process->rho();
+        const Rate r = process->riskFreeRate()->
+                forwardRate(1.0, 1.0, Continuous).rate();
+
+        Array vv(mesher->locations(1));
+        Array varianceValues(0.5*vv);
+
+        ext::shared_ptr<FdmLinearOpLayout> layout = mesher->layout();
+        FdmLinearOpIterator endIter = layout->end();
+        for (FdmLinearOpIterator iter = layout->begin(); iter != endIter;
+            ++iter) {
+            if (   iter.coordinates()[0] == 0
+                || iter.coordinates()[0] == layout->dim()[0]-1) {
+                varianceValues[iter.index()] = 0.0;
+            }
+        }
+
+        const Size n = mesher->layout()->size();
+
+        using namespace boost::numeric::ublas;
+        banded_matrix<Real> v(n, n), u(n, n);
+        for (Size i=0; i < n; ++i) {
+            v(i, i) = varianceValues[i];
+            u(i, i) = vv[i];
+        }
+
+        SparseMatrix dx = NthOrderDerivativeOp(0, 1, nx, mesher).toMatrix();
+        SparseMatrix dxx = NthOrderDerivativeOp(0, 2, nx, mesher).toMatrix();
+        SparseMatrix dv = NthOrderDerivativeOp(1, 1, nv, mesher).toMatrix();
+        SparseMatrix dvv = NthOrderDerivativeOp(1, 2, nv, mesher).toMatrix();
+
+        map_ =
+              sparse_prod<SparseMatrix>(r*identity_matrix<Real>(n) - v, dx)
+            + sparse_prod<SparseMatrix>(v, dxx)
+            - r*identity_matrix<Real>(n)
+            + (0.5*rho*sigma)*sparse_prod<SparseMatrix>(
+                u, sparse_prod<SparseMatrix>(dx, dv)
+                    + sparse_prod<SparseMatrix>(dv, dx))
+            + (0.5*sigma*sigma)*sparse_prod<SparseMatrix>(u, dvv)
+            + kappa*sparse_prod<SparseMatrix>(
+                theta*identity_matrix<Real>(n) - u, dv);
+    }
+
+}
+
+void NthOrderDerivativeOpTest::testHestonHigherOrderOperator() {
+    BOOST_TEST_MESSAGE("Testing higher order Heston operator...");
+
+    SavedSettings backup;
+
+    const DayCounter dc = Actual365Fixed();
+    const Date today = Date(3, January, 2021);
+    Settings::instance().evaluationDate() = today;
+    const Date maturity = today + Period(1, Years);
+    const Time maturityTime = dc.yearFraction(today, maturity);
+
+    const ext::shared_ptr<HestonProcess> process
+        = ext::make_shared<HestonProcess>(
+              Handle<YieldTermStructure>(flatRate(0.0, dc)),
+              Handle<YieldTermStructure>(flatRate(0.0, dc)),
+              Handle<Quote>(ext::make_shared<SimpleQuote>(100.0)),
+              0.16, 1.0, 0.16, 0.8, -0.75);
+
+    const Real strike = 100;
+
+    const Size vGrid = 21;
+    const ext::shared_ptr<FdmHestonVarianceMesher> vMesher
+        = ext::make_shared<FdmHestonVarianceMesher>(
+            vGrid, process, maturityTime);
+
+    const Volatility avgVolaEstimate = vMesher->volaEstimate();
+
+    const Size xGrid = 201;
+    const ext::shared_ptr<FdmBlackScholesMesher> xMesher =
+        ext::make_shared<FdmBlackScholesMesher>(
+            xGrid,
+            FdmBlackScholesMesher::processHelper(
+                process->s0(), process->dividendYield(),
+                process->riskFreeRate(), avgVolaEstimate),
+            maturityTime, strike);
+
+    const ext::shared_ptr<FdmMesher> mesher
+        = ext::make_shared<FdmMesherComposite>(xMesher, vMesher);
+
+    const ext::shared_ptr<FdmLinearOpComposite> op
+        = ext::make_shared<FdmHigherOrderHestonOp>(5, 5, mesher, process);
+
+    const ext::shared_ptr<StrikedTypePayoff> payoff =
+        ext::make_shared<PlainVanillaPayoff>(Option::Call, strike);
+
+    const ext::shared_ptr<FdmInnerValueCalculator> calculator
+        = ext::make_shared<FdmLogInnerValue>(payoff, mesher, 0);
+
+    const ext::shared_ptr<FdmStepConditionComposite> conditions
+        = ext::make_shared<FdmStepConditionComposite>(
+            std::list<std::vector<Time> >(),
+            FdmStepConditionComposite::Conditions());
+
+    const Size tGrid = 20;
+    const Size damping = 1;
+    const FdmSolverDesc solverDesc = {
+        mesher, FdmBoundaryConditionSet(), conditions,
+        calculator, maturityTime, tGrid, damping
+    };
+
+    FdmSchemeDesc desc = FdmSchemeDesc::CrankNicolson();
+
+    const Real npv = ext::make_shared<Fdm2DimSolver>(solverDesc, desc, op)
+        ->interpolateAt(std::log(process->s0()->value()), process->v0());
+
+    VanillaOption option(payoff, ext::make_shared<EuropeanExercise>(maturity));
+
+    option.setPricingEngine(
+        ext::make_shared<AnalyticHestonEngine>(
+            ext::make_shared<HestonModel>(process)));
+
+    const Real expected = option.NPV();
+    const Real diff = std::fabs(expected - npv)/expected;
+    if (diff > 0.0005)
+        BOOST_ERROR(
+            "Failed to reproduce Heston value with higher order FDM ..."
+                << "\n expected:   " << expected
+                << "\n calculated: " << npv
+                << "\n diff:       " << diff
+                << "\n tolerance:  " << 0.0005);
 }
 
 #endif
@@ -831,6 +1018,8 @@ test_suite* NthOrderDerivativeOpTest::suite() {
         &NthOrderDerivativeOpTest::testCompareFirstDerivativeOp2dUniformGrid));
     suite->add(QUANTLIB_TEST_CASE(
         &NthOrderDerivativeOpTest::testMixedSecondOrder9PointsOnUniformGrid));
+    suite->add(QUANTLIB_TEST_CASE(
+        &NthOrderDerivativeOpTest::testHestonHigherOrderOperator));
 
 #endif
 

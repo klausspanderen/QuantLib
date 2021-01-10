@@ -39,6 +39,7 @@ class NthOrderDerivativeOpTest {
     static void testCompareFirstDerivativeOpNonUniformGrid();
     static void testCompareFirstDerivativeOp2dUniformGrid();
     static void testMixedSecondOrder9PointsOnUniformGrid();
+    static void testHestonHigherOrderOperator();
 
     static boost::unit_test_framework::test_suite* suite();
 };
