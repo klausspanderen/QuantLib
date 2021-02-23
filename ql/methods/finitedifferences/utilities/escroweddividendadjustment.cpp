@@ -20,18 +20,17 @@
 /*! \file escroweddividendadjustment.cpp
 */
 #include <ql/methods/finitedifferences/utilities/escroweddividendadjustment.hpp>
+#include <utility>
 
 namespace QuantLib {
 
-    EscrowedDividendAdjustment::EscrowedDividendAdjustment(
-        DividendSchedule dividendSchedule,
-        Handle<YieldTermStructure> rTS,
-        Handle<YieldTermStructure> qTS,
-        ext::function<Real(Date)> toTime,
-        Time maturity)
-    : dividendSchedule_(dividendSchedule),
-      rTS_(rTS), qTS_(qTS),
-      toTime_(toTime), maturity_(maturity) {}
+    EscrowedDividendAdjustment::EscrowedDividendAdjustment(DividendSchedule dividendSchedule,
+                                                           Handle<YieldTermStructure> rTS,
+                                                           Handle<YieldTermStructure> qTS,
+                                                           ext::function<Real(Date)> toTime,
+                                                           Time maturity)
+    : dividendSchedule_(std::move(std::move(dividendSchedule))), rTS_(std::move(std::move(rTS))),
+      qTS_(std::move(std::move(qTS))), toTime_(std::move(std::move(toTime))), maturity_(maturity) {}
 
 
     Real EscrowedDividendAdjustment::dividendAdjustment(Time t) const {
