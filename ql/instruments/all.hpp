@@ -15,8 +15,8 @@
 #include <ql/instruments/claim.hpp>
 #include <ql/instruments/cliquetoption.hpp>
 #include <ql/instruments/compositeinstrument.hpp>
-#include <ql/instruments/cpicapfloor.hpp>
 #include <ql/instruments/cpiswap.hpp>
+#include <ql/instruments/cpicapfloor.hpp>
 #include <ql/instruments/creditdefaultswap.hpp>
 #include <ql/instruments/dividendbarrieroption.hpp>
 #include <ql/instruments/dividendschedule.hpp>
@@ -57,10 +57,11 @@
 #include <ql/instruments/swaption.hpp>
 #include <ql/instruments/vanillaoption.hpp>
 #include <ql/instruments/vanillastorageoption.hpp>
-#include <ql/instruments/vanillaswap.hpp>
 #include <ql/instruments/vanillaswingoption.hpp>
+#include <ql/instruments/vanillaswap.hpp>
 #include <ql/instruments/varianceswap.hpp>
 #include <ql/instruments/yearonyearinflationswap.hpp>
 #include <ql/instruments/zerocouponinflationswap.hpp>
 #include <ql/instruments/zerocouponswap.hpp>
+
 #include <ql/instruments/bonds/all.hpp>
