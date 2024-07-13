@@ -332,6 +332,7 @@ namespace {
             std::cout << "Benchmark size='" << size << "' on " << nProc << " processes\n";
             std::cout << std::string(84,'-') << "\n";
             std::cout << std::endl;        
+            std::cout << "...running validation of all test-cases first" << std::endl << std::endl;
         }
 
         // If a test fails, notify the user and terminate the benchmark
@@ -702,28 +703,27 @@ int main(int argc, char* argv[] )
 
 
         BenchmarkResult bmResult;
-        if( !clientMode) 
+        if( !clientMode)
             BenchmarkSupport::printGreeting(size, nProc);
 
 
+        if (nProc == 1 && !clientMode) {
+            // run the benchmarks up-front and make sure reference results are reproduced.
+            for(unsigned int j=0; j<bm.size(); j++) {
+                bmResult.reset();
+                bm[j].runValidation();
+                if( !bmResult.pass() ) {
+                    BenchmarkSupport::terminateBenchmark();
+                }
+            }
 
-        if (nProc == 1 && !clientMode) {        
+            std::cout << std::endl << "...validation passed, running actual benchmarks" << std::endl;
+
             // Sequential benchmark, useful for debugging
             auto startTime = std::chrono::steady_clock::now();
-            for (unsigned i=0; i < nSize+1; ++i) {
+            for (unsigned i=0; i < nSize; ++i) {
                 for(unsigned int j=0; j<bm.size(); j++) {
-                    double time(0);
-                    // First run the validation for each benchmark
-                    if(i == 0) {
-                        bmResult.reset();
-                        bm[j].runValidation();
-                        if( !bmResult.pass() ) {
-                            BenchmarkSupport::terminateBenchmark();
-                        }
-                    }
-                    else {
-                        time = bm[j].runBenchmark();
-                    }
+                    double time = bm[j].runBenchmark();
                     bm[j].getTotalRuntime() += time;
                     LOG_MESSAGE("MASTER  :  completed benchmarkId=" << j << ", time=" << time);              
                 }
@@ -760,17 +760,13 @@ int main(int argc, char* argv[] )
 
                 message_queue mq(
                         open_or_create, testUnitIdQueueName,
-                        (nSize+1)*bm.size(), sizeof(IPCInstructionMsg)
+                        nSize*bm.size(), sizeof(IPCInstructionMsg)
                         );
                 message_queue rq(                
                         open_or_create, testResultQueueName,                 
                         std::max(16u, nProc),                 
                         sizeof(IPCResultMsg)
                         );
-
-
-                // Start timer for the benchmark
-                auto startTime = std::chrono::steady_clock::now();
 
                 // Create the thread group and start each worker process, giving it a unique threadId (useful for debugging)
                 std::vector<std::thread> threadGroup;            
@@ -787,26 +783,42 @@ int main(int argc, char* argv[] )
 
                 IPCInstructionMsg msg;
                 IPCResultMsg r;
+
+                // run the benchmarks up-front and make sure reference results are reproduced.
+                for (unsigned j=0; j < bm.size(); ++j) {
+                    msg = {j, true}; // validation only
+                    LOG_MESSAGE("MASTER    : sending benchmarkId=" << msg.j << " with validation=" << msg.validate);
+                    mq.send(&msg, sizeof(IPCInstructionMsg), 0);
+                }
+                for (unsigned i=0; i < bm.size(); ++i) {
+                    rq.receive(&r, sizeof(IPCResultMsg), recvd_size, priority);
+                    LOG_MESSAGE("MASTER     : received result : threadId=" << r.threadId << ", benchmarkId=" << r.bmId);
+                    if(r.time < 0) {
+                        // A benchmark test has failed
+                        BenchmarkSupport::terminateBenchmark();
+                    }
+                }
+
+                std::cout << std::endl << "...validation passed, running actual benchmarks" << std::endl;
+
+                // Start timer for the benchmark
+                auto startTime = std::chrono::steady_clock::now();
+
                 // Fire off all the benchmarks
                 for (unsigned j=0; j < bm.size(); ++j) {
                     // Enqueue nSize copies of each task to even out load balance
-                    for (unsigned i=0; i < nSize+1; ++i) {
-                        // Do validation for the first run of each benchmark
-                        msg = {j, (i==0)};
+                    for (unsigned i=0; i < nSize; ++i) {
+                        msg = {j, false}; // benchmarks only
                         // Will be non-blocking send since send buffer is big enough 
                         LOG_MESSAGE("MASTER    : sending benchmarkId=" << msg.j << " with validation=" << msg.validate);                   
                         mq.send(&msg, sizeof(IPCInstructionMsg), 0);
                     }
                 }
                 // Receive all results from workers
-                for (unsigned i=0; i < (nSize+1)*bm.size(); ++i) {
+                for (unsigned i=0; i < nSize*bm.size(); ++i) {                
                     rq.receive(&r, sizeof(IPCResultMsg), recvd_size, priority);
                     LOG_MESSAGE("MASTER     : received result : threadId=" << r.threadId << ", benchmarkId=" << r.bmId 
                             << ", time=" << r.time << " : " << nSize*bm.size()-1-i << " results pending");    
-                    if(r.time < 0) {
-                        // A benchmark test has failed
-                        BenchmarkSupport::terminateBenchmark();
-                    }               
                     bm[r.bmId].getTotalRuntime() += r.time;                             
                 }
 
@@ -865,8 +877,8 @@ int main(int argc, char* argv[] )
                         double time;
                         if( id.validate ) {
                             bmResult.reset();
-                            bm[id.j].runValidation();
-                            time = (bmResult.pass() ? 0.0 : -1.0);
+                            time = bm[id.j].runValidation();
+                            time = (bmResult.pass() ? time : -1.0);
                         }
                         else {
                             time = bm[id.j].runBenchmark();
