@@ -710,13 +710,13 @@ int main(int argc, char* argv[] )
         if (nProc == 1 && !clientMode) {        
             // Sequential benchmark, useful for debugging
             auto startTime = std::chrono::steady_clock::now();
-            for (unsigned i=0; i < nSize; ++i) {
+            for (unsigned i=0; i < nSize+1; ++i) {
                 for(unsigned int j=0; j<bm.size(); j++) {
-                    double time;
+                    double time(0);
                     // First run the validation for each benchmark
                     if(i == 0) {
                         bmResult.reset();
-                        time = bm[j].runValidation();
+                        bm[j].runValidation();
                         if( !bmResult.pass() ) {
                             BenchmarkSupport::terminateBenchmark();
                         }
@@ -760,7 +760,7 @@ int main(int argc, char* argv[] )
 
                 message_queue mq(
                         open_or_create, testUnitIdQueueName,
-                        nSize*bm.size(), sizeof(IPCInstructionMsg)
+                        (nSize+1)*bm.size(), sizeof(IPCInstructionMsg)
                         );
                 message_queue rq(                
                         open_or_create, testResultQueueName,                 
@@ -790,7 +790,7 @@ int main(int argc, char* argv[] )
                 // Fire off all the benchmarks
                 for (unsigned j=0; j < bm.size(); ++j) {
                     // Enqueue nSize copies of each task to even out load balance
-                    for (unsigned i=0; i < nSize; ++i) {
+                    for (unsigned i=0; i < nSize+1; ++i) {
                         // Do validation for the first run of each benchmark
                         msg = {j, (i==0)};
                         // Will be non-blocking send since send buffer is big enough 
@@ -799,7 +799,7 @@ int main(int argc, char* argv[] )
                     }
                 }
                 // Receive all results from workers
-                for (unsigned i=0; i < nSize*bm.size(); ++i) {                
+                for (unsigned i=0; i < (nSize+1)*bm.size(); ++i) {
                     rq.receive(&r, sizeof(IPCResultMsg), recvd_size, priority);
                     LOG_MESSAGE("MASTER     : received result : threadId=" << r.threadId << ", benchmarkId=" << r.bmId 
                             << ", time=" << r.time << " : " << nSize*bm.size()-1-i << " results pending");    
@@ -865,8 +865,8 @@ int main(int argc, char* argv[] )
                         double time;
                         if( id.validate ) {
                             bmResult.reset();
-                            time = bm[id.j].runValidation();
-                            time = (bmResult.pass() ? time : -1.0);
+                            bm[id.j].runValidation();
+                            time = (bmResult.pass() ? 0.0 : -1.0);
                         }
                         else {
                             time = bm[id.j].runBenchmark();
