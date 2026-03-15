@@ -277,9 +277,12 @@ namespace QuantLib {
 
     class AnalyticHestonEngine::OptimalAlpha {
       public:
+        enum Method { AvoidCancellation, OptimalValue };
+
         OptimalAlpha(
             Time t,
-            const AnalyticHestonEngine* enginePtr);
+            const AnalyticHestonEngine* enginePtr,
+            Method method = OptimalValue);
 
         Real operator()(Real strike) const;
         std::pair<Real, Real> alphaGreaterZero(Real strike) const;
@@ -299,6 +302,7 @@ namespace QuantLib {
         const Real eps_;
 
         const AnalyticHestonEngine* const enginePtr_;
+        const Method method_;
         Real km_, kp_;
         mutable Size evaluations_ = 0;
     };

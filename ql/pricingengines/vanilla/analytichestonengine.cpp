@@ -297,7 +297,8 @@ namespace QuantLib {
 
     AnalyticHestonEngine::OptimalAlpha::OptimalAlpha(
         const Time t,
-        const AnalyticHestonEngine* const enginePtr)
+        const AnalyticHestonEngine* const enginePtr,
+        Method method)
     : t_(t),
       fwd_(enginePtr->model_->process()->s0()->value()
               * enginePtr->model_->process()->dividendYield()->discount(t)
@@ -307,7 +308,8 @@ namespace QuantLib {
       sigma_(enginePtr->model_->sigma()),
       rho_(enginePtr->model_->rho()),
       eps_(std::pow(2, -int(0.5*std::numeric_limits<Real>::digits))),
-      enginePtr_(enginePtr)
+      enginePtr_(enginePtr),
+      method_(method)
       {
         km_ = k(0.0, -1);
         kp_ = k(0.0,  1);
@@ -385,21 +387,35 @@ namespace QuantLib {
     }
 
     Real AnalyticHestonEngine::OptimalAlpha::operator()(Real strike) const {
-        try {
-            const std::pair<Real, Real> minusOne = alphaSmallerMinusOne(strike);
-            const std::pair<Real, Real> greaterZero = alphaGreaterZero(strike);
+        switch (method_) {
+          case OptimalValue:
+            try {
+                const std::pair<Real, Real> minusOne = alphaSmallerMinusOne(strike);
+                const std::pair<Real, Real> greaterZero = alphaGreaterZero(strike);
 
-            if (minusOne.second < greaterZero.second) {
-                return minusOne.first;
+                if (minusOne.second < greaterZero.second) {
+                    return minusOne.first;
+                }
+                else {
+                    return greaterZero.first;
+                }
             }
-            else {
-                return greaterZero.first;
+            catch (const Error&) {
+                return -0.5;
             }
+            break;
+          case AvoidCancellation:
+            {
+                const Real omega = std::log(fwd_/strike);
+                if (omega >= 0.0)
+                    return alphaSmallerMinusOne(strike).first;
+                else
+                    return alphaGreaterZero(strike).first;
+            }
+            break;
+          default:
+            QL_FAIL("unknown calculation method");
         }
-        catch (const Error&) {
-            return -0.5;
-        }
-
     }
 
     Size AnalyticHestonEngine::OptimalAlpha::numberOfEvaluations() const {
@@ -472,8 +488,11 @@ namespace QuantLib {
                         /(kappa*term) + theta;
             break;
           case AndersenPiterbargOptCV:
-              vAvg_ = -8.0*std::log(enginePtr->chF(
-                         std::complex<Real>(0, alpha_), term).real())/term;
+            {
+              const Real b = 1.0 + alpha_;
+              vAvg_ = -2.0*std::log(enginePtr->chF(
+                           std::complex<Real>(0, -b), term).real())/(term*(b - b*b));
+            }
             break;
           case AsymptoticChF:
             phi_ = -(v0+term*kappa*theta)/sigma
@@ -578,7 +597,11 @@ namespace QuantLib {
     std::complex<Real> AnalyticHestonEngine::chF(
         const std::complex<Real>& z, Time t) const {
         if (model_->sigma() > 1e-6 || model_->kappa() < 1e-8) {
-            return std::exp(lnChF(z, t));
+            const std::complex<Real> v = lnChF(z, t);
+            if (v.real() != -std::numeric_limits<Real>::infinity())
+                return std::exp(v);
+            else
+                return std::complex<Real>(0.0);
         }
         else {
             const Real kappa = model_->kappa();

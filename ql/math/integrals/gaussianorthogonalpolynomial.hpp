@@ -54,6 +54,9 @@ namespace QuantLib {
         virtual Real alpha(Size i) const = 0;
         virtual Real beta(Size i)  const = 0;
         virtual Real w(Real x)     const = 0;
+        virtual Real sqrt_w(Real x) const {
+            return std::sqrt(w(x));
+        }
 
         Real value(Size i, Real x) const;
         Real weightedValue(Size i, Real x) const;
@@ -68,6 +71,7 @@ namespace QuantLib {
         Real alpha(Size i) const override;
         Real beta(Size i) const override;
         Real w(Real x) const override;
+        Real sqrt_w(Real x) const override;
 
       private:
         const Real s_;
@@ -82,6 +86,7 @@ namespace QuantLib {
         Real alpha(Size i) const override;
         Real beta(Size i) const override;
         Real w(Real x) const override;
+        Real sqrt_w(Real x) const override;
 
       private:
         const Real mu_;
@@ -96,6 +101,7 @@ namespace QuantLib {
         Real alpha(Size i) const override;
         Real beta(Size i) const override;
         Real w(Real x) const override;
+        Real sqrt_w(Real x) const override;
 
       private:
         const Real alpha_;

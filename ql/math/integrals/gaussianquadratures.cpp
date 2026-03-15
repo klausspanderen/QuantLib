@@ -23,6 +23,7 @@
 */
 
 #include <ql/utilities/null.hpp>
+#include <ql/math/functional.hpp>
 #include <ql/math/integrals/gaussianquadratures.hpp>
 #include <ql/math/matrixutilities/tqreigendecomposition.hpp>
 #include <ql/math/matrixutilities/symmetricschurdecomposition.hpp>
@@ -56,7 +57,7 @@ namespace QuantLib {
 
         Real mu_0 = orthPoly.mu_0();
         for (i=0; i<n; ++i) {
-            w_[i] = mu_0*ev[0][i]*ev[0][i] / orthPoly.w(x_[i]);
+            w_[i] = mu_0*squared( ev[0][i] / orthPoly.sqrt_w(x_[i]) );
         }
     }
 
