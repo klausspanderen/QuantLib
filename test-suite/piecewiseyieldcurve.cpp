@@ -1074,7 +1074,6 @@ BOOST_AUTO_TEST_CASE(testDefaultInstantiation) {
     PiecewiseYieldCurve<Discount, Linear> linear(vars.settlement, vars.instruments, Actual360());
     PiecewiseYieldCurve<Discount, LogLinear> log_linear(vars.settlement, vars.instruments, Actual360());
     PiecewiseYieldCurve<Discount, Cubic> cubic(vars.settlement, vars.instruments, Actual360());
-    PiecewiseYieldCurve<Discount, DefaultLogCubic> log_cubic(vars.settlement, vars.instruments, Actual360());
     PiecewiseYieldCurve<Discount, MonotonicLogCubic> monotonic_log_cubic(vars.settlement, vars.instruments, Actual360());
     PiecewiseYieldCurve<Discount, KrugerLog> kruger_log_cubic(vars.settlement, vars.instruments, Actual360());
     PiecewiseYieldCurve<ForwardRate, BackwardFlat> backward(vars.settlement, vars.instruments, Actual360());
@@ -1542,7 +1541,7 @@ BOOST_AUTO_TEST_CASE(testMultiCurveTwoPiecewiseYieldCurves) {
 
     CommonVars vars(Date(23, Oct, 2025));
 
-    constexpr Real accuracy = 1E-10;
+    constexpr auto accuracy = 1E-10;
 
     Handle<YieldTermStructure> discountCurve(
         ext::make_shared<FlatForward>(vars.settlement, 0.02, Actual360()));
@@ -1559,7 +1558,7 @@ BOOST_AUTO_TEST_CASE(testMultiCurveTwoPiecewiseYieldCurves) {
 
     for (Size i = 1; i <= 9; ++i) {
         helpers3m.push_back(ext::make_shared<FraRateHelper>(
-            q, i, i + 3, euribor3m->fixingDays(), euribor3m->fixingCalendar(),
+            q, (Natural)i, (Natural)(i + 3), euribor3m->fixingDays(), euribor3m->fixingCalendar(),
             euribor3m->businessDayConvention(), euribor3m->endOfMonth(), euribor3m->dayCounter(),
             Pillar::LastRelevantDate));
     }
@@ -1598,14 +1597,14 @@ BOOST_AUTO_TEST_CASE(testMultiCurveTwoPiecewiseYieldCurves) {
 
     // check instrument npvs
 
-    constexpr Real tolerance = 1E-10;
+    constexpr auto tolerance = 1E-10;
 
     for (Size i = 1; i <= 9; ++i) {
         Date start = euribor3m->fixingCalendar().advance(
             euribor3m->fixingCalendar().advance(vars.today, euribor3m->fixingDays(), Days), i,
             Months, euribor3m->businessDayConvention(), euribor3m->endOfMonth());
         ForwardRateAgreement fra(euribor3m, start, Position::Long, q->value(), 1.0, curve3m);
-        BOOST_CHECK_CLOSE(fra.forwardRate().rate(), q->value(), tolerance);
+        QL_CHECK_CLOSE(fra.forwardRate().rate(), q->value(), tolerance);
     }
 
     for (Size i = 2; i <= 10; ++i) {
@@ -1632,7 +1631,7 @@ BOOST_AUTO_TEST_CASE(testMultiCurveTwoPiecewiseYieldCurves) {
         Leg otherLeg = IborLeg(otherSchedule, euribor6m).withNotionals(1.0);
         Swap swap(baseLeg, otherLeg);
         swap.setPricingEngine(ext::make_shared<DiscountingSwapEngine>(discountCurve));
-        BOOST_CHECK_SMALL(swap.NPV(), tolerance);
+        QL_CHECK_SMALL(swap.NPV(), tolerance);
     }
 
     for (Size i = 1; i <= 3; ++i) {
@@ -1659,7 +1658,7 @@ BOOST_AUTO_TEST_CASE(testMultiCurveTwoPiecewiseYieldCurves) {
         Leg otherLeg = IborLeg(otherSchedule, euribor6m).withNotionals(1.0);
         Swap swap(baseLeg, otherLeg);
         swap.setPricingEngine(ext::make_shared<DiscountingSwapEngine>(discountCurve));
-        BOOST_CHECK_SMALL(swap.NPV(), tolerance);
+        QL_CHECK_SMALL(swap.NPV(), tolerance);
     }
 
     for (Size i = 2; i <= 10; ++i) {
@@ -1670,7 +1669,7 @@ BOOST_AUTO_TEST_CASE(testMultiCurveTwoPiecewiseYieldCurves) {
                                .withFixedLegConvention(Following)
                                .withFixedLegTerminationDateConvention(Following);
         swap.setPricingEngine(ext::make_shared<DiscountingSwapEngine>(discountCurve));
-        BOOST_CHECK_SMALL(swap.NPV(), tolerance);
+        QL_CHECK_SMALL(swap.NPV(), tolerance);
     }
 
 }
@@ -1681,7 +1680,7 @@ BOOST_AUTO_TEST_CASE(testMultiCurvePiecewiseYieldCurveAndSpreadedCurve) {
 
     CommonVars vars(Date(23, Oct, 2025));
 
-    constexpr Real accuracy = 1E-10;
+    constexpr auto accuracy = 1E-10;
 
     RelinkableHandle<YieldTermStructure> intcurveois;
     RelinkableHandle<YieldTermStructure> intcurve3m;
@@ -1713,9 +1712,9 @@ BOOST_AUTO_TEST_CASE(testMultiCurvePiecewiseYieldCurveAndSpreadedCurve) {
 
     // check spread ois 3m
 
-    constexpr Real tolerance = 1E-10;
+    constexpr auto tolerance = 1E-10;
 
-    BOOST_CHECK_CLOSE(curveois->zeroRate(1.0, Continuous) - curve3m->zeroRate(1.0, Continuous),
+    QL_CHECK_CLOSE(curveois->zeroRate(1.0, Continuous).rate() - curve3m->zeroRate(1.0, Continuous).rate(),
                       b->value(), tolerance);
 
     // check instrument npvs
@@ -1728,9 +1727,51 @@ BOOST_AUTO_TEST_CASE(testMultiCurvePiecewiseYieldCurveAndSpreadedCurve) {
                                .withFixedLegConvention(Following)
                                .withFixedLegTerminationDateConvention(Following);
         swap.setPricingEngine(ext::make_shared<DiscountingSwapEngine>(curveois));
-        BOOST_CHECK_SMALL(swap.NPV(), tolerance);
+        QL_CHECK_SMALL(swap.NPV(), tolerance);
     }
 
+}
+
+BOOST_AUTO_TEST_CASE(testGlobalBootstrapInstrumentWeights) {
+
+    CommonVars vars(Date(23, Oct, 2025));
+
+    std::vector<ext::shared_ptr<RateHelper>> helpers;
+    auto euribor6m = ext::make_shared<Euribor6M>();
+
+    // build a curve with overdetermined helper set
+
+    helpers.push_back(ext::make_shared<DepositRateHelper>(
+        0.01, 6 * Months, 2, TARGET(), ModifiedFollowing, true, Actual360()));
+    helpers.push_back(ext::make_shared<DepositRateHelper>(
+        0.02, 6 * Months, 2, TARGET(), ModifiedFollowing, true, Actual360()));
+
+    using CurveType = PiecewiseYieldCurve<Discount, LogLinear, GlobalBootstrap>;
+
+    // curve1 uses traditional helpers with weights w1 and w2
+
+    Real w1 = 0.1, w2 = 0.9;
+
+    auto curve1 = ext::make_shared<CurveType>(
+        vars.today, helpers, Actual360(), LogLinear(),
+        GlobalBootstrap<CurveType>(1E-10, nullptr, nullptr, {w1, w2}));
+
+    // curve2 uses custom dates and penalties using the same weights
+
+    auto addDates = [&helpers]() {
+        return std::vector<Date>{helpers[0]->pillarDate(), helpers[1]->pillarDate()};
+    };
+    auto addPenalties = [&helpers, w1, w2]() {
+        return Array{w1 * helpers[0]->quoteError(), w2 * helpers[1]->quoteError()};
+    };
+
+    auto curve2 = ext::make_shared<CurveType>(
+        vars.today, std::vector<ext::shared_ptr<RateHelper>>{}, Actual360(), LogLinear(),
+        GlobalBootstrap<CurveType>(helpers, addDates, addPenalties, 1E-10));
+
+    // check that both approaches result in the same curve
+
+    BOOST_CHECK_CLOSE(curve1->discount(0.3), curve2->discount(0.3), 1E-13);
 }
 
 template <template<class C> class Bootstrap>

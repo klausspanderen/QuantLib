@@ -734,36 +734,6 @@ BOOST_AUTO_TEST_CASE(test131BootstrapRegression) {
     BOOST_CHECK_NO_THROW(curve.nodes());
 }
 
-BOOST_AUTO_TEST_CASE(testDeprecatedHelper) {
-    BOOST_TEST_MESSAGE("Testing deprecated DatedOISRateHelper class...");
-
-    Date today(11, December, 2012);
-    Settings::instance().evaluationDate() = today;
-
-    auto estr = ext::make_shared<Estr>();
-
-    std::vector<ext::shared_ptr<RateHelper>> helpers;
-    helpers.push_back(ext::make_shared<OISRateHelper>(2, 1 * Weeks, makeQuoteHandle(0.070/100), estr));
-    QL_DEPRECATED_DISABLE_WARNING
-    helpers.push_back(ext::make_shared<DatedOISRateHelper>(Date(16, January, 2013), Date(13, February, 2013), makeQuoteHandle(0.046/100), estr));
-    QL_DEPRECATED_ENABLE_WARNING
-
-    auto curve = ext::make_shared<PiecewiseYieldCurve<ForwardRate,BackwardFlat>>(0, TARGET(), helpers, Actual365Fixed());
-    BOOST_CHECK_NO_THROW(curve->nodes());
-
-    estr = ext::make_shared<Estr>(Handle<YieldTermStructure>(curve));
-    ext::shared_ptr<OvernightIndexedSwap> swap =
-        MakeOIS(Period(), estr, 0.046/100, 0 * Days)
-        .withEffectiveDate(Date(16, January, 2013))
-        .withTerminationDate(Date(13, February, 2013))
-        .withDiscountingTermStructure(Handle<YieldTermStructure>(curve));
-
-    if (std::fabs(swap->NPV()) > 1.0e-10) {
-        BOOST_ERROR("npv is not at par:\n"
-                    << "    swap value: " << swap->NPV());
-    }
-}
-
 BOOST_AUTO_TEST_CASE(testBootstrapWithDifferentCalendars) {
     BOOST_TEST_MESSAGE("Testing OIS bootstrap when the swap maturity is not a fixing day for the index...");
 
@@ -1052,6 +1022,25 @@ BOOST_AUTO_TEST_CASE(testMakeOISDefaultSettlementDays) {
         Date expected(14, May, 2025); // Wednesday
         BOOST_CHECK_EQUAL(swap.startDate(), expected);
     }
+}
+
+BOOST_AUTO_TEST_CASE(testMakeOisEndOfMonthRegression2453) {
+
+    /* See https://github.com/lballabio/QuantLib/issues/2453. Before the fix, the swap will roll
+     * backwards from 18 December 2028 (instead of 17 December 2028) and create a front stub. */
+
+    BOOST_TEST_MESSAGE("Testing end of month regression in MakeOIS...");
+
+    Date today(16, December, 2025);
+    Settings::instance().evaluationDate() = today;
+
+    auto aonia =
+        ext::make_shared<Aonia>(Handle<YieldTermStructure>(flatRate(0.03, Actual365Fixed())));
+    OvernightIndexedSwap swap =
+        MakeOIS(3 * Years, aonia).withSettlementDays(1).withEndOfMonth(true);
+
+    BOOST_CHECK_EQUAL(swap.overnightSchedule()[0], Date(17, December, 2025));
+    BOOST_CHECK_EQUAL(swap.overnightSchedule()[1], Date(17, December, 2026));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -25,8 +25,8 @@ namespace QuantLib {
     MultiCurve::MultiCurve(Real accuracy)
     : multiCurveBootstrap_(ext::make_shared<MultiCurveBootstrap>(accuracy)) {}
 
-    MultiCurve::MultiCurve(ext::shared_ptr<OptimizationMethod> optimizer,
-                           ext::shared_ptr<EndCriteria> endCriteria)
+    MultiCurve::MultiCurve(const ext::shared_ptr<OptimizationMethod>& optimizer,
+                           const ext::shared_ptr<EndCriteria>& endCriteria)
     : multiCurveBootstrap_(ext::make_shared<MultiCurveBootstrap>(optimizer, endCriteria)) {}
 
     Handle<YieldTermStructure>
@@ -35,8 +35,8 @@ namespace QuantLib {
         QL_REQUIRE(internalHandle.empty(),
                    "internal handle must be empty; was the curve added already?");
         auto mcProv = ext::dynamic_pointer_cast<MultiCurveBootstrapProvider>(curve);
-        QL_REQUIRE(mcProv != nullptr, "curve must not be a MultiCurveBootstrapProvider");
-        auto bootstrap = mcProv->multiCurveBootstrapContributor();
+        QL_REQUIRE(mcProv != nullptr, "curve must be a MultiCurveBootstrapProvider");
+        const auto *bootstrap = mcProv->multiCurveBootstrapContributor();
         QL_REQUIRE(bootstrap, "curve does not provide a valid multi curve bootstrap contributor");
         multiCurveBootstrap_->add(bootstrap);
         return addCurve(internalHandle, std::move(curve));
