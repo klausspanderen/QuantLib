@@ -25,6 +25,7 @@
 #include <ql/time/daycounters/actual36525.hpp>
 #include <ql/time/daycounters/actual365fixed.hpp>
 
+#include <boost/numeric/conversion/cast.hpp>
 #include <cmath>
 
 namespace QuantLib {
