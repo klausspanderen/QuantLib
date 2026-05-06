@@ -26,6 +26,8 @@
 #include <ql/instruments/vanillaoption.hpp>
 #include <ql/math/functional.hpp>
 #include <ql/math/integrals/gausslobattointegral.hpp>
+#include <ql/math/integrals/expsinhintegral.hpp>
+#include <ql/math/integrals/tanhsinhintegral.hpp>
 #include <ql/math/optimization/differentialevolution.hpp>
 #include <ql/math/optimization/levenbergmarquardt.hpp>
 #include <ql/math/randomnumbers/rngtraits.hpp>
@@ -1797,6 +1799,14 @@ BOOST_AUTO_TEST_CASE(testAllIntegrationMethods) {
         "exp-sinh integration with angled contour shift integral");
 #endif
 
+#ifdef QL_BOOST_HAS_TANH_SINH
+    // Angled contour shift integral with expSinh
+    reportOnIntegrationMethodTest(option, model,
+        AnalyticHestonEngine::Integration::tanhSinh(),
+        AnalyticHestonEngine::AngledContour,
+        true, expected, 1e-8, Null<Size>(),
+        "tanh-sinh integration with angled contour shift integral");
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(testCosHestonCumulants) {

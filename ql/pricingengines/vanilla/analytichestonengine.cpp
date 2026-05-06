@@ -31,6 +31,7 @@
 #include <ql/math/integrals/simpsonintegral.hpp>
 #include <ql/math/integrals/trapezoidintegral.hpp>
 #include <ql/math/integrals/expsinhintegral.hpp>
+#include <ql/math/integrals/tanhsinhintegral.hpp>
 #include <ql/math/solvers1d/brent.hpp>
 #include <ql/math/expm1.hpp>
 #include <ql/math/functional.hpp>
@@ -994,6 +995,13 @@ namespace QuantLib {
                 new ExpSinhIntegral(relTolerance)));
     }
 
+    AnalyticHestonEngine::Integration
+    AnalyticHestonEngine::Integration::tanhSinh(Real relTolerance) {
+        return Integration(
+            TanhSinh, ext::shared_ptr<Integrator>(
+                new TanhSinhIntegral(relTolerance)));
+    }
+
     Size AnalyticHestonEngine::Integration::numberOfEvaluations() const {
         if (integrator_ != nullptr) {
             return integrator_->numberOfEvaluations();
@@ -1009,7 +1017,8 @@ namespace QuantLib {
             || intAlgo_ == GaussKronrod
             || intAlgo_ == Simpson
             || intAlgo_ == Trapezoid
-            || intAlgo_ == ExpSinh;
+            || intAlgo_ == ExpSinh
+            || intAlgo_ == TanhSinh;
     }
 
     Real AnalyticHestonEngine::Integration::calculate(
@@ -1033,6 +1042,11 @@ namespace QuantLib {
             retVal = scaling*(*integrator_)(
                 [scaling, f](Real x) -> Real { return f(scaling*x);},
                 0.0, std::numeric_limits<Real>::max());
+            break;
+          case TanhSinh:
+              retVal = (*integrator_)(
+                  [f](Real x) -> Real { return f(x);},
+                  0.0, std::numeric_limits<Real>::max());
             break;
           case Simpson:
           case Trapezoid:

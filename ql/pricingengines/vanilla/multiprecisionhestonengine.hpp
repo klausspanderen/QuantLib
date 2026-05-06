@@ -65,7 +65,7 @@ namespace QuantLib {
 
         MultiPrecisionHestonEngine(
            const ext::shared_ptr<HestonModel> hestonModel,
-           const T& precision = T(QL_EPSILON),
+           Real precision = QL_EPSILON,
            ContourIntegral ci = Plain,
            ControlVariate cv = Without,
            Quadrature quad = ExpSinh)

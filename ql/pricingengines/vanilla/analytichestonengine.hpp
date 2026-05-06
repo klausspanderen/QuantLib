@@ -221,6 +221,7 @@ namespace QuantLib {
         static Integration discreteSimpson(Size evaluation = 1000);
         static Integration discreteTrapezoid(Size evaluation = 1000);
         static Integration expSinh(Real relTolerance = 1e-8);
+        static Integration tanhSinh(Real relTolerance = 1e-8);
 
         static Real andersenPiterbargIntegrationLimit(
             Real c_inf, Real epsilon, Real v0, Real t);
@@ -243,7 +244,7 @@ namespace QuantLib {
               DiscreteTrapezoid, DiscreteSimpson,
               GaussLaguerre, GaussLegendre,
               GaussChebyshev, GaussChebyshev2nd,
-              ExpSinh};
+              ExpSinh, TanhSinh};
 
         Integration(Algorithm intAlgo, ext::shared_ptr<GaussianQuadrature> quadrature);
 
