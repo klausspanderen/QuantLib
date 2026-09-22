@@ -18,7 +18,6 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "preconditions.hpp"
 #include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/math/statistics/discrepancystatistics.hpp>
@@ -1112,7 +1111,7 @@ BOOST_AUTO_TEST_CASE(testSobolBurleySkipping) {
         }
 }
 
-BOOST_AUTO_TEST_CASE(testHighDimensionalIntegrals, *precondition(if_speed(Slow))) {
+BOOST_AUTO_TEST_CASE(testHighDimensionalIntegrals) {
     BOOST_TEST_MESSAGE("Testing high-dimensional integrals...");
 
     /* We are running "Integration test 1, results for high dimensions" (Figure 9) from:
@@ -1170,6 +1169,25 @@ BOOST_AUTO_TEST_CASE(testHighDimensionalIntegrals, *precondition(if_speed(Slow))
                             "order of error for dimension " + std::to_string(dimension[d]) + " is" +
                                 std::to_string(errOrder3) + " expected " +
                                 std::to_string(expectedOrderOfError[d][2]));
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE(testBurley2020SobolRsgOutputBounds) {
+    BOOST_TEST_MESSAGE(
+        "Testing that the output of Burley 2020 is strictly in (0,1)...");
+
+    // With enough dimensions the scrambling occasionally maps to
+    // zero.  Without the +0.5 offset this would give 0.0 in the
+    // double sequence, which breaks InverseCumulativeNormal.
+    Burley2020SobolRsg rsg(1551, 42, SobolRsg::JoeKuoD7, 43);
+    for (Size i = 0; i < 100000; ++i) {
+        const auto& seq = rsg.nextSequence();
+        for (Size j = 0; j < seq.value.size(); ++j) {
+            if (seq.value[j] <= 0.0 || seq.value[j] >= 1.0)
+                BOOST_ERROR("output " << seq.value[j]
+                            << " at sample " << i << ", dim " << j);
+        }
     }
 }
 

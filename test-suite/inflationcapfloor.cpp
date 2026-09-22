@@ -101,9 +101,9 @@ struct CommonVars {
     DayCounter dc;
     ext::shared_ptr<YoYInflationIndex> iir;
 
-    RelinkableHandle<YieldTermStructure> nominalTS;
+    Handle<YieldTermStructure> nominalTS;
     ext::shared_ptr<YoYInflationTermStructure> yoyTS;
-    RelinkableHandle<YoYInflationTermStructure> hy;
+    Handle<YoYInflationTermStructure> hy;
 
     // setup
     CommonVars()
@@ -139,12 +139,11 @@ struct CommonVars {
         for (Size i=0; i<rpiSchedule.size();i++) {
             rpi->addFixing(rpiSchedule[i], fixData[i]);
         }
-        // link from yoy index to yoy TS
-        iir = ext::make_shared<YoYInflationIndex>(rpi, hy);
+        iir = ext::make_shared<YoYInflationIndex>(rpi);
 
         ext::shared_ptr<YieldTermStructure> nominalFF(
                 new FlatForward(evaluationDate, 0.05, ActualActual(ActualActual::ISDA)));
-        nominalTS.linkTo(nominalFF);
+        nominalTS = Handle<YieldTermStructure>(nominalFF);
 
         // now build the YoY inflation curve
         Period observationLag = Period(2,Months);
@@ -173,7 +172,7 @@ struct CommonVars {
                         CPI::Flat,
                         observationLag,
                         calendar, convention, dc,
-                        Handle<YieldTermStructure>(nominalTS));
+                        nominalTS);
 
         Date baseDate = rpi->lastFixingDate();
         Rate baseYYRate = yyData[0].rate/100.0;
@@ -183,7 +182,8 @@ struct CommonVars {
         yoyTS = ext::dynamic_pointer_cast<YoYInflationTermStructure>(pYYTS);
 
         // make sure that the index has the latest yoy term structure
-        hy.linkTo(pYYTS);
+        hy = Handle<YoYInflationTermStructure>(pYYTS);
+        iir = ext::make_shared<YoYInflationIndex>(rpi, hy);
     }
 
     // utilities
@@ -215,7 +215,7 @@ struct CommonVars {
                                                        dc,
                                                        observationLag,
                                                        frequency,
-                                                       iir->interpolated()));
+                                                       false));
 
 
         switch (which) {
@@ -372,8 +372,6 @@ BOOST_AUTO_TEST_CASE(testConsistency) {
             }
         }
     } // pricer loop
-    // remove circular refernce
-    vars.hy.reset();
 }
 
 
@@ -427,8 +425,7 @@ BOOST_AUTO_TEST_CASE(testParity) {
                                                  0.0, // spread on index
                                                  vars.dc, UnitedKingdom());
 
-                    Handle<YieldTermStructure> hTS(vars.nominalTS);
-                    ext::shared_ptr<PricingEngine> sppe(new DiscountingSwapEngine(hTS));
+                    ext::shared_ptr<PricingEngine> sppe(new DiscountingSwapEngine(vars.nominalTS));
                     swap.setPricingEngine(sppe);
 
                     // N.B. nominals are 10e6
@@ -445,8 +442,46 @@ BOOST_AUTO_TEST_CASE(testParity) {
             }
         }
     }
-    // remove circular refernce
-    vars.hy.reset();
+}
+
+BOOST_AUTO_TEST_CASE(testVolatilityQuoteObservability) {
+
+    BOOST_TEST_MESSAGE("Testing yoy inflation cap repricing when its volatility quote moves...");
+
+    CommonVars vars;
+
+    auto quote = ext::make_shared<SimpleQuote>(0.01);
+    Handle<YoYOptionletVolatilitySurface> volatility(
+        ext::make_shared<ConstantYoYOptionletVolatility>(Handle<Quote>(quote),
+                                                         vars.settlementDays,
+                                                         vars.calendar,
+                                                         vars.convention,
+                                                         vars.dc,
+                                                         vars.observationLag,
+                                                         vars.frequency,
+                                                         false));
+
+    Leg leg = vars.makeYoYLeg(vars.evaluationDate, 2);
+    auto cap = ext::make_shared<YoYInflationCap>(leg, std::vector<Rate>(1, 0.0295));
+    cap->setPricingEngine(ext::make_shared<YoYInflationBlackCapFloorEngine>(
+        vars.iir, volatility, vars.nominalTS));
+
+    Real quoted = cap->NPV();
+    quote->setValue(0.02);
+    Real moved = cap->NPV();
+
+    BOOST_CHECK_MESSAGE(moved != quoted,
+                        "yoy cap NPV did not move when its volatility quote did: "
+                        << quoted << " at vol 0.01 and " << moved << " at vol 0.02");
+
+    Leg other = vars.makeYoYLeg(vars.evaluationDate, 2);
+    auto fixed = ext::make_shared<YoYInflationCap>(other, std::vector<Rate>(1, 0.0295));
+    fixed->setPricingEngine(vars.makeEngine(0.02, 0));
+
+    Real expected = fixed->NPV();
+    BOOST_CHECK_MESSAGE(relativeError(moved, expected, expected) < 1.0e-10,
+                        "yoy cap priced off a quote of 0.02 gives " << moved
+                        << ", off a value of 0.02 gives " << expected);
 }
 
 BOOST_AUTO_TEST_CASE(testCachedValue) {
@@ -516,9 +551,6 @@ BOOST_AUTO_TEST_CASE(testCachedValue) {
     BOOST_CHECK_MESSAGE(fabs(floor->NPV()-cachedFloorNPVbac)<0.22,"yoy floor cached NPV wrong "
                         <<floor->NPV()<<" should be "<<cachedFloorNPVbac<<" bac Black pricer"
                         <<" diff was "<<(fabs(floor->NPV()-cachedFloorNPVbac)));
-
-    // remove circular refernce
-    vars.hy.reset();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -32,7 +32,9 @@ namespace QuantLib {
                                                   bool indexIsInterpolated)
     : CPIVolatilitySurface(settlementDays, cal, bdc, dc,
                            observationLag, frequency, indexIsInterpolated),
-      volatility_(vol) {}
+      volatility_(vol) {
+        registerWith(volatility_);
+    }
 
     ConstantCPIVolatility:: ConstantCPIVolatility(Volatility vol,
                                                   Natural settlementDays,

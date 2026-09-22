@@ -220,7 +220,9 @@ namespace QuantLib {
                                     indexIsInterpolated,
                                     volType,
                                     displacement),
-      volatility_(std::move(v)), minStrike_(minStrike), maxStrike_(maxStrike) {}
+      volatility_(std::move(v)), minStrike_(minStrike), maxStrike_(maxStrike) {
+        registerWith(volatility_);
+    }
 
     Volatility ConstantYoYOptionletVolatility::volatilityImpl(Time, Rate) const {
         return volatility_->value();

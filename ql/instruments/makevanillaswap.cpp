@@ -38,16 +38,22 @@
 namespace QuantLib {
 
     MakeVanillaSwap::MakeVanillaSwap(const Period& swapTenor,
-                                     const ext::shared_ptr<IborIndex>& index,
-                                     Rate fixedRate,
-                                     const Period& forwardStart)
-    : swapTenor_(swapTenor), iborIndex_(index), fixedRate_(fixedRate), forwardStart_(forwardStart),
+                                     const ext::shared_ptr<IborIndex>& index)
+    : swapTenor_(swapTenor), iborIndex_(index),
       fixedCalendar_(index->fixingCalendar()), floatCalendar_(index->fixingCalendar()),
       floatTenor_(index->tenor()),
       floatConvention_(index->businessDayConvention()),
       floatTerminationDateConvention_(index->businessDayConvention()),
-
       floatDayCount_(index->dayCounter()) {}
+
+    MakeVanillaSwap::MakeVanillaSwap(const Period& swapTenor,
+                                     const ext::shared_ptr<IborIndex>& index,
+                                     Rate fixedRate,
+                                     const Period& forwardStart)
+    : MakeVanillaSwap(swapTenor, index) {
+        withFixedRate(fixedRate);
+        withForwardStart(forwardStart);
+    }
 
     MakeVanillaSwap::operator VanillaSwap() const {
         ext::shared_ptr<VanillaSwap> swap = *this;
@@ -56,21 +62,32 @@ namespace QuantLib {
 
     MakeVanillaSwap::operator ext::shared_ptr<VanillaSwap>() const {
 
+        QL_REQUIRE(effectiveDate_ == Date() || settlementDays_ == Null<Natural>(),
+                   "cannot set both an explicit effective date and settlement days; "
+                   "use one or the other");
+
         Date startDate;
         if (effectiveDate_ != Date())
             startDate = effectiveDate_;
         else {
             Date refDate = Settings::instance().evaluationDate();
-            // if the evaluation date is not a business day
-            // then move to the next business day
-            refDate = floatCalendar_.adjust(refDate);
             // use index valueDate interface wherever possible to estimate spot date.
             // Unless we pass an explicit settlementDays_ which does not match the index-defined number of fixing days.
             Date spotDate;
-            if (settlementDays_ == Null<Natural>())
+            if (settlementDays_ == Null<Natural>()) {
+                // the spot date is defined by the index, so the reference
+                // date must be adjusted on the index fixing calendar (not the
+                // float/payment calendar) to keep the pre-adjust consistent
+                // with valueDate's own fixing-calendar advance.
+                refDate = iborIndex_->fixingCalendar().adjust(refDate);
                 spotDate = iborIndex_->valueDate(refDate);
-            else
-                spotDate = floatCalendar_.advance(refDate, settlementDays_ * Days);
+            } else {
+                // settlement days are counted from the actual evaluation
+                // date, even when it is not a business day (see issue #753)
+                const Calendar& settlementCalendar =
+                    settlementCalendar_.empty() ? floatCalendar_ : settlementCalendar_;
+                spotDate = settlementCalendar.advance(refDate, settlementDays_ * Days);
+            }
             startDate = spotDate+forwardStart_;
             if (forwardStart_.length()<0)
                 startDate = floatCalendar_.adjust(startDate,
@@ -206,9 +223,23 @@ namespace QuantLib {
         return *this;
     }
 
+    MakeVanillaSwap& MakeVanillaSwap::withFixedRate(Rate k) {
+        fixedRate_ = k;
+        return *this;
+    }
+
+    MakeVanillaSwap& MakeVanillaSwap::withForwardStart(const Period& f) {
+        forwardStart_ = f;
+        return *this;
+    }
+
     MakeVanillaSwap& MakeVanillaSwap::withSettlementDays(Natural settlementDays) {
         settlementDays_ = settlementDays;
-        effectiveDate_ = Date();
+        return *this;
+    }
+
+    MakeVanillaSwap& MakeVanillaSwap::withSettlementCalendar(const Calendar& cal) {
+        settlementCalendar_ = cal;
         return *this;
     }
 
@@ -362,7 +393,7 @@ namespace QuantLib {
         return *this;
     }
 
-    MakeVanillaSwap& MakeVanillaSwap::withIndexedCoupons(const ext::optional<bool>& b) {
+    MakeVanillaSwap& MakeVanillaSwap::withIndexedCoupons(const std::optional<bool>& b) {
         useIndexedCoupons_ = b;
         return *this;
     }

@@ -166,7 +166,11 @@ namespace QuantLib {
     template <class Impl>
     void TreeLattice<Impl>::stepback(Size i, const Array& values,
                                      Array& newValues) const {
-        #pragma omp parallel for
+        // Early tree steps can have very few nodes, where the cost of
+        // spawning an OpenMP thread team outweighs the work being
+        // parallelized. Only parallelize once there's enough work to
+        // amortize that overhead.
+        #pragma omp parallel for if(this->impl().size(i) >= 1024)
         for (long j=0; j<(long)this->impl().size(i); j++) {
             Real value = 0.0;
             for (Size l=0; l<n_; l++) {

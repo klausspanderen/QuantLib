@@ -41,7 +41,7 @@ namespace QuantLib {
       public:
         MultipleResetsSwap(Type type,
                            Real nominal,
-                           Schedule fixedSchedule,
+                           const Schedule& fixedSchedule,
                            Rate fixedRate,
                            DayCounter fixedDayCount,
                            Schedule fullResetSchedule,
@@ -49,7 +49,7 @@ namespace QuantLib {
                            Size resetsPerCoupon,
                            Spread spread = 0.0,
                            RateAveraging::Type averagingMethod = RateAveraging::Compound,
-                           ext::optional<BusinessDayConvention> paymentConvention = ext::nullopt,
+                           std::optional<BusinessDayConvention> paymentConvention = std::nullopt,
                            Integer paymentLag = 0,
                            const Calendar& paymentCalendar = Calendar());
 

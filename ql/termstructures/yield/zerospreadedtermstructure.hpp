@@ -26,6 +26,7 @@
 #define quantlib_zero_spreaded_term_structure_hpp
 
 #include <ql/quote.hpp>
+#include <ql/termstructures/yield/derivedtermstructure.hpp>
 #include <ql/termstructures/yield/zeroyieldstructure.hpp>
 #include <utility>
 
@@ -44,7 +45,8 @@ namespace QuantLib {
         - observability against changes in the underlying term
           structure and in the added spread is checked.
     */
-    class ZeroSpreadedTermStructure : public ZeroYieldStructure {
+    class ZeroSpreadedTermStructure
+        : public RelativeDerivedYieldTermStructure<ZeroYieldStructure> {
       public:
         ZeroSpreadedTermStructure(Handle<YieldTermStructure>,
                                   Handle<Quote> spread,
@@ -60,27 +62,10 @@ namespace QuantLib {
                                   Compounding comp,
                                   Frequency freq,
                                   const DayCounter& dc);
-        //! \name YieldTermStructure interface
-        //@{
-        DayCounter dayCounter() const override;
-        Calendar calendar() const override;
-        Natural settlementDays() const override;
-        const Date& referenceDate() const override;
-        Date maxDate() const override;
-        Time maxTime() const override;
-        //@}
-        //! \name Observer interface
-        //@{
-        void update() override;
-        //@}
       protected:
         //! returns the spreaded zero yield rate
         Rate zeroYieldImpl(Time) const override;
-        //! returns the spreaded forward rate
-        /* This method must disappear should the spread become a curve */
-        Rate forwardImpl(Time) const;
       private:
-        Handle<YieldTermStructure> originalCurve_;
         Handle<Quote> spread_;
         Compounding comp_;
         Frequency freq_;
@@ -90,10 +75,8 @@ namespace QuantLib {
                                                                 Handle<Quote> spread,
                                                                 Compounding comp,
                                                                 Frequency freq)
-    : originalCurve_(std::move(h)), spread_(std::move(spread)), comp_(comp), freq_(freq) {
-        if (!originalCurve_.empty())
-            enableExtrapolation(originalCurve_->allowsExtrapolation());
-        registerWith(originalCurve_);
+    : RelativeDerivedYieldTermStructure(std::move(h)), spread_(std::move(spread)),
+      comp_(comp), freq_(freq) {
         registerWith(spread_);
     }
 
@@ -104,44 +87,6 @@ namespace QuantLib {
                                                                 const DayCounter& dc)
     : ZeroSpreadedTermStructure(std::move(h), std::move(spread), comp, freq) {}
 
-    inline DayCounter ZeroSpreadedTermStructure::dayCounter() const {
-        return originalCurve_->dayCounter();
-    }
-
-    inline Calendar ZeroSpreadedTermStructure::calendar() const {
-        return originalCurve_->calendar();
-    }
-
-    inline Natural ZeroSpreadedTermStructure::settlementDays() const {
-        return originalCurve_->settlementDays();
-    }
-
-    inline const Date& ZeroSpreadedTermStructure::referenceDate() const {
-        return originalCurve_->referenceDate();
-    }
-
-    inline Date ZeroSpreadedTermStructure::maxDate() const {
-        return originalCurve_->maxDate();
-    }
-
-    inline Time ZeroSpreadedTermStructure::maxTime() const {
-        return originalCurve_->maxTime();
-    }
-
-    inline void ZeroSpreadedTermStructure::update() {
-        if (!originalCurve_.empty()) {
-            YieldTermStructure::update();
-            enableExtrapolation(originalCurve_->allowsExtrapolation());
-        } else {
-            /* The implementation inherited from YieldTermStructure
-               asks for our reference date, which we don't have since
-               the original curve is still not set. Therefore, we skip
-               over that and just call the base-class behavior. */
-            // NOLINTNEXTLINE(bugprone-parent-virtual-call)
-            TermStructure::update();
-        }
-    }
-
     inline Rate ZeroSpreadedTermStructure::zeroYieldImpl(Time t) const {
         InterestRate zeroRate =
             originalCurve_->zeroRate(t, comp_, freq_, true);
@@ -150,11 +95,6 @@ namespace QuantLib {
                                   zeroRate.compounding(),
                                   zeroRate.frequency());
         return spreadedRate.equivalentRate(Continuous, NoFrequency, t);
-    }
-
-    inline Rate ZeroSpreadedTermStructure::forwardImpl(Time t) const {
-        return originalCurve_->forwardRate(t, t, comp_, freq_, true)
-            + spread_->value();
     }
 
 }

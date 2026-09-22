@@ -5,6 +5,7 @@
  Copyright (C) 2015 Paolo Mazzocchi
  Copyright (C) 2017 Joseph Jeisman
  Copyright (C) 2017 Fabrice Lecuyer
+ Copyright (C) 2026 Sergio Araujo
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -30,14 +31,20 @@
 namespace QuantLib {
 
     MakeOIS::MakeOIS(const Period& swapTenor,
-                     const ext::shared_ptr<OvernightIndex>& overnightIndex,
-                     Rate fixedRate,
-                     const Period& forwardStart)
-    : swapTenor_(swapTenor), overnightIndex_(overnightIndex), fixedRate_(fixedRate),
-      forwardStart_(forwardStart),
+                     const ext::shared_ptr<OvernightIndex>& overnightIndex)
+    : swapTenor_(swapTenor), overnightIndex_(overnightIndex),
       fixedCalendar_(overnightIndex->fixingCalendar()),
       overnightCalendar_(overnightIndex->fixingCalendar()),
       fixedDayCount_(overnightIndex->dayCounter()) {}
+
+    MakeOIS::MakeOIS(const Period& swapTenor,
+                     const ext::shared_ptr<OvernightIndex>& overnightIndex,
+                     Rate fixedRate,
+                     const Period& forwardStart)
+    : MakeOIS(swapTenor, overnightIndex) {
+        withFixedRate(fixedRate);
+        withForwardStart(forwardStart);
+    }
 
     MakeOIS::operator OvernightIndexedSwap() const {
         ext::shared_ptr<OvernightIndexedSwap> ois = *this;
@@ -45,6 +52,10 @@ namespace QuantLib {
     }
 
     MakeOIS::operator ext::shared_ptr<OvernightIndexedSwap>() const {
+
+        QL_REQUIRE(effectiveDate_ == Date() || settlementDays_ == Null<Natural>(),
+                   "cannot set both an explicit effective date and settlement days; "
+                   "use one or the other");
 
         Date startDate;
         if (effectiveDate_ != Date())
@@ -65,10 +76,11 @@ namespace QuantLib {
             }            
 
             Date refDate = Settings::instance().evaluationDate();
-            // if the evaluation date is not a business day
-            // then move to the next business day
-            refDate = overnightCalendar_.adjust(refDate);
-            Date spotDate = overnightCalendar_.advance(refDate,
+            // settlement days are counted from the actual evaluation
+            // date, even when it is not a business day (see issue #753)
+            const Calendar& settlementCalendar =
+                settlementCalendar_.empty() ? overnightCalendar_ : settlementCalendar_;
+            Date spotDate = settlementCalendar.advance(refDate,
                                                        settlementDays*Days);
             startDate = spotDate+forwardStart_;
             if (forwardStart_.length()<0)
@@ -137,7 +149,10 @@ namespace QuantLib {
                                       overnightSchedule,
                                       overnightIndex_, overnightSpread_,
                                       paymentLag_, paymentAdjustment_,
-                                      paymentCalendar_, telescopicValueDates_);
+                                      paymentCalendar_, telescopicValueDates_,
+                                      averagingMethod_, lookbackDays_,
+                                      lockoutDays_, applyObservationShift_,
+                                      roundingPrecision_);
             if (engine_ == nullptr) {
                 Handle<YieldTermStructure> disc =
                                     overnightIndex_->forwardingTermStructure();
@@ -161,9 +176,10 @@ namespace QuantLib {
                                  overnightSchedule,
                                  overnightIndex_, overnightSpread_,
                                  paymentLag_, paymentAdjustment_,
-                                 paymentCalendar_, telescopicValueDates_, 
+                                 paymentCalendar_, telescopicValueDates_,
                                  averagingMethod_, lookbackDays_,
-                                 lockoutDays_, applyObservationShift_));
+                                 lockoutDays_, applyObservationShift_,
+                                 roundingPrecision_));
 
         if (engine_ == nullptr) {
             Handle<YieldTermStructure> disc =
@@ -193,9 +209,23 @@ namespace QuantLib {
         return *this;
     }
 
+    MakeOIS& MakeOIS::withFixedRate(Rate k) {
+        fixedRate_ = k;
+        return *this;
+    }
+
+    MakeOIS& MakeOIS::withForwardStart(const Period& f) {
+        forwardStart_ = f;
+        return *this;
+    }
+
     MakeOIS& MakeOIS::withSettlementDays(Natural settlementDays) {
         settlementDays_ = settlementDays;
-        effectiveDate_ = Date();
+        return *this;
+    }
+
+    MakeOIS& MakeOIS::withSettlementCalendar(const Calendar& cal) {
+        settlementCalendar_ = cal;
         return *this;
     }
 
@@ -365,6 +395,11 @@ namespace QuantLib {
 
     MakeOIS& MakeOIS::withObservationShift(bool applyObservationShift) {
         applyObservationShift_ = applyObservationShift;
+        return *this;
+    }
+
+    MakeOIS& MakeOIS::withRoundingPrecision(const std::optional<Integer>& roundingPrecision) {
+        roundingPrecision_ = roundingPrecision;
         return *this;
     }
 

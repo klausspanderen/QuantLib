@@ -24,14 +24,7 @@
 */
 
 #include <ql/instruments/payoffs.hpp>
-#include <ql/math/integrals/discreteintegrals.hpp>
 #include <ql/math/integrals/exponentialintegrals.hpp>
-#include <ql/math/integrals/gausslobattointegral.hpp>
-#include <ql/math/integrals/kronrodintegral.hpp>
-#include <ql/math/integrals/simpsonintegral.hpp>
-#include <ql/math/integrals/trapezoidintegral.hpp>
-#include <ql/math/integrals/expsinhintegral.hpp>
-#include <ql/math/integrals/tanhsinhintegral.hpp>
 #include <ql/math/solvers1d/brent.hpp>
 #include <ql/math/expm1.hpp>
 #include <ql/math/functional.hpp>
@@ -49,81 +42,6 @@
 #endif
 
 namespace QuantLib {
-
-    namespace {
-
-        class integrand1 {
-          private:
-            const Real c_inf_;
-            const std::function<Real(Real)> f_;
-          public:
-            integrand1(Real c_inf, std::function<Real(Real)> f) : c_inf_(c_inf), f_(std::move(f)) {}
-            Real operator()(Real x) const {
-                if ((1.0-x)*c_inf_ > QL_EPSILON)
-                    return f_(-std::log(0.5-0.5*x)/c_inf_)/((1.0-x)*c_inf_);
-                else
-                    return 0.0;
-            }
-        };
-
-        class integrand2 {
-          private:
-            const Real c_inf_;
-            const std::function<Real(Real)> f_;
-          public:
-            integrand2(Real c_inf, std::function<Real(Real)> f) : c_inf_(c_inf), f_(std::move(f)) {}
-            Real operator()(Real x) const {
-                if (x*c_inf_ > QL_EPSILON) {
-                    return f_(-std::log(x)/c_inf_)/(x*c_inf_);
-                } else {
-                    return 0.0;
-                }
-            }
-        };
-
-        class integrand3 {
-          private:
-            const integrand2 int_;
-          public:
-            integrand3(Real c_inf, const std::function<Real(Real)>& f)
-            : int_(c_inf, f) {}
-
-            Real operator()(Real x) const { return int_(1.0-x); }
-        };
-
-        class u_Max {
-          public:
-            u_Max(Real c_inf, Real epsilon) : c_inf_(c_inf), logEpsilon_(std::log(epsilon)) {}
-
-            Real operator()(Real u) const {
-                ++evaluations_;
-                return c_inf_*u + std::log(u) + logEpsilon_;
-            }
-
-            Size evaluations() const { return evaluations_; }
-
-          private:
-            const Real c_inf_, logEpsilon_;
-            mutable Size evaluations_ = 0;
-        };
-
-
-        class uHat_Max {
-          public:
-            uHat_Max(Real v0T2, Real epsilon) : v0T2_(v0T2), logEpsilon_(std::log(epsilon)) {}
-
-            Real operator()(Real u) const {
-                ++evaluations_;
-                return v0T2_*u*u + std::log(u) + logEpsilon_;
-            }
-
-            Size evaluations() const { return evaluations_; }
-
-          private:
-            const Real v0T2_, logEpsilon_;
-            mutable Size evaluations_ = 0;
-        };
-    }
 
     // helper class for integration
     class AnalyticHestonEngine::Fj_Helper {

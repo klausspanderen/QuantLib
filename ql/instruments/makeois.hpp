@@ -4,6 +4,7 @@
  Copyright (C) 2009 Ferdinando Ametrano
  Copyright (C) 2017 Joseph Jeisman
  Copyright (C) 2017 Fabrice Lecuyer
+ Copyright (C) 2026 Sergio Araujo
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -27,6 +28,7 @@
 #define quantlib_makeois_hpp
 
 #include <ql/instruments/overnightindexedswap.hpp>
+#include <ql/optional.hpp>
 #include <ql/time/dategenerationrule.hpp>
 #include <ql/termstructures/yieldtermstructure.hpp>
 
@@ -39,8 +41,15 @@ namespace QuantLib {
     class MakeOIS {
       public:
         MakeOIS(const Period& swapTenor,
+                const ext::shared_ptr<OvernightIndex>& overnightIndex);
+
+        /*! \deprecated Use the other constructor plus withFixedRate and/or withForwardStart.
+                        Deprecated in version 1.44.
+        */
+        [[deprecated("Use the other constructor plus withFixedRate and/or withForwardStart.")]]
+        MakeOIS(const Period& swapTenor,
                 const ext::shared_ptr<OvernightIndex>& overnightIndex,
-                Rate fixedRate = Null<Rate>(),
+                Rate fixedRate,
                 const Period& fwdStart = 0*Days);
 
         operator OvernightIndexedSwap() const;
@@ -49,8 +58,12 @@ namespace QuantLib {
         MakeOIS& receiveFixed(bool flag = true);
         MakeOIS& withType(Swap::Type type);
         MakeOIS& withNominal(Real n);
+        MakeOIS& withFixedRate(Rate k);
+
+        MakeOIS& withForwardStart(const Period& f);
 
         MakeOIS& withSettlementDays(Natural settlementDays);
+        MakeOIS& withSettlementCalendar(const Calendar& cal);
         MakeOIS& withEffectiveDate(const Date&);
         MakeOIS& withTerminationDate(const Date&);
         MakeOIS& withRule(DateGeneration::Rule r);
@@ -92,18 +105,20 @@ namespace QuantLib {
         MakeOIS& withLookbackDays(Natural lookbackDays);
         MakeOIS& withLockoutDays(Natural lockoutDays);
         MakeOIS& withObservationShift(bool applyObservationShift = true);
+        MakeOIS& withRoundingPrecision(const std::optional<Integer>& roundingPrecision);
 
         MakeOIS& withPricingEngine(
                               const ext::shared_ptr<PricingEngine>& engine);
       private:
         Period swapTenor_;
         ext::shared_ptr<OvernightIndex> overnightIndex_;
-        Rate fixedRate_;
-        Period forwardStart_;
+        Rate fixedRate_ = Null<Rate>();
+        Period forwardStart_ = 0*Days;
 
         Natural settlementDays_ = Null<Natural>();
         Date effectiveDate_, terminationDate_;
         Calendar fixedCalendar_, overnightCalendar_;
+        Calendar settlementCalendar_;
 
         Frequency fixedPaymentFrequency_ = Annual;
         Frequency overnightPaymentFrequency_ = Annual;
@@ -118,7 +133,7 @@ namespace QuantLib {
         DateGeneration::Rule fixedRule_ = DateGeneration::Backward;
         DateGeneration::Rule overnightRule_ = DateGeneration::Backward;
         bool fixedEndOfMonth_ = false, overnightEndOfMonth_ = false, isDefaultEOM_ = true;
-        ext::optional<bool> maturityEndOfMonth_;
+        std::optional<bool> maturityEndOfMonth_;
 
         Swap::Type type_ = Swap::Payer;
         Real nominal_ = 1.0;
@@ -133,6 +148,7 @@ namespace QuantLib {
         Natural lookbackDays_ = Null<Natural>();
         Natural lockoutDays_ = 0;
         bool applyObservationShift_ = false;
+        std::optional<Integer> roundingPrecision_;
     };
 
 }

@@ -110,6 +110,9 @@
     <ClCompile Include="convertiblebonds.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="copulas.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="covariance.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -152,6 +155,9 @@
     <ClCompile Include="everestoption.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="extendedblackvariancesurface.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="exchangerate.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -180,6 +186,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="forwardrateagreement.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="g2process.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="garch.cpp">
@@ -317,6 +326,9 @@
     <ClCompile Include="overnightindexedcoupon.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="overnightindexedfundingratehelper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="overnightindexedswap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -363,6 +375,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="rngtraits.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="roughhestonmodel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="rounding.cpp">
@@ -420,6 +435,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="tracing.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="trinomialtree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="twoassetbarrieroption.cpp">
@@ -498,10 +516,25 @@
     <ClCompile Include="fittedbonddiscountcurve.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="floatfloatswap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="ultimateforwardtermstructure.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="basisswapratehelpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="constnotionalcrosscurrencybasisswap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mtmcrosscurrencybasisswap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="constnotionalcrosscurrencyfixedvsfloatingswap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="constnotionalcrosscurrencyswap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="crosscurrencyratehelpers.cpp">

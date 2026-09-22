@@ -35,9 +35,15 @@
 #include <ql/cashflows/cashflows.hpp>
 #include <ql/cashflows/couponpricer.hpp>
 #include <ql/currencies/europe.hpp>
+#include <ql/currencies/asia.hpp>
 #include <ql/instruments/makevanillaswap.hpp>
 #include <ql/indexes/ibor/bbsw.hpp>
 #include <ql/indexes/ibor/gbplibor.hpp>
+#include <ql/indexes/iborindex.hpp>
+#include <ql/time/calendars/taiwan.hpp>
+#include <ql/time/calendars/target.hpp>
+#include <ql/time/calendars/unitedstates.hpp>
+#include <ql/time/calendars/jointcalendar.hpp>
 
 using namespace QuantLib;
 using namespace boost::unit_test_framework;
@@ -374,7 +380,7 @@ BOOST_AUTO_TEST_CASE(testNotifications) {
 }
 
 BOOST_AUTO_TEST_CASE(testFixedTenorInferenceWithTerminationDate) {
-    BOOST_TEST_MESSAGE("Testing MakeVanillaSwap fixed tenor inference "
+    BOOST_TEST_MESSAGE("Testing MakeVanillaSwap fixed-tenor inference "
                        "with explicit termination date...");
 
     SavedSettings backup;
@@ -392,7 +398,8 @@ BOOST_AUTO_TEST_CASE(testFixedTenorInferenceWithTerminationDate) {
     // GBP 10Y: should infer Semiannual (6M) fixed tenor
     Date endDate10Y = startDate + 10 * Years;
     ext::shared_ptr<VanillaSwap> gbp10Y =
-        MakeVanillaSwap(10 * Years, gbpIndex, 0.03)
+        MakeVanillaSwap(10 * Years, gbpIndex)
+            .withFixedRate(0.03)
             .withEffectiveDate(startDate)
             .withTerminationDate(endDate10Y);
     Size gbp10YPeriods = gbp10Y->fixedSchedule().size() - 1;
@@ -403,7 +410,8 @@ BOOST_AUTO_TEST_CASE(testFixedTenorInferenceWithTerminationDate) {
     // GBP 6M: should infer Annual (1Y) fixed tenor
     Date endDate6M = startDate + 6 * Months;
     ext::shared_ptr<VanillaSwap> gbp6M =
-        MakeVanillaSwap(6 * Months, gbpIndex, 0.03)
+        MakeVanillaSwap(6 * Months, gbpIndex)
+            .withFixedRate(0.03)
             .withEffectiveDate(startDate)
             .withTerminationDate(endDate6M);
     Size gbp6MPeriods = gbp6M->fixedSchedule().size() - 1;
@@ -414,7 +422,8 @@ BOOST_AUTO_TEST_CASE(testFixedTenorInferenceWithTerminationDate) {
     // AUD 5Y: should infer Semiannual (6M) fixed tenor
     Date endDate5Y = startDate + 5 * Years;
     ext::shared_ptr<VanillaSwap> aud5Y =
-        MakeVanillaSwap(5 * Years, audIndex, 0.03)
+        MakeVanillaSwap(5 * Years, audIndex)
+            .withFixedRate(0.03)
             .withEffectiveDate(startDate)
             .withTerminationDate(endDate5Y);
     Size aud5YPeriods = aud5Y->fixedSchedule().size() - 1;
@@ -425,7 +434,8 @@ BOOST_AUTO_TEST_CASE(testFixedTenorInferenceWithTerminationDate) {
     // AUD 2Y: should infer Quarterly (3M) fixed tenor
     Date endDate2Y = startDate + 2 * Years;
     ext::shared_ptr<VanillaSwap> aud2Y =
-        MakeVanillaSwap(2 * Years, audIndex, 0.03)
+        MakeVanillaSwap(2 * Years, audIndex)
+            .withFixedRate(0.03)
             .withEffectiveDate(startDate)
             .withTerminationDate(endDate2Y);
     Size aud2YPeriods = aud2Y->fixedSchedule().size() - 1;
@@ -436,7 +446,8 @@ BOOST_AUTO_TEST_CASE(testFixedTenorInferenceWithTerminationDate) {
     // AUD 4Y (boundary): should infer Semiannual (6M) fixed tenor
     Date endDate4Y = startDate + 4 * Years;
     ext::shared_ptr<VanillaSwap> aud4Y =
-        MakeVanillaSwap(4 * Years, audIndex, 0.03)
+        MakeVanillaSwap(4 * Years, audIndex)
+            .withFixedRate(0.03)
             .withEffectiveDate(startDate)
             .withTerminationDate(endDate4Y);
     Size aud4YPeriods = aud4Y->fixedSchedule().size() - 1;
@@ -447,7 +458,8 @@ BOOST_AUTO_TEST_CASE(testFixedTenorInferenceWithTerminationDate) {
     // AUD 3Y: should infer Quarterly (3M) fixed tenor
     Date endDate3Y = startDate + 3 * Years;
     ext::shared_ptr<VanillaSwap> aud3Y =
-        MakeVanillaSwap(3 * Years, audIndex, 0.03)
+        MakeVanillaSwap(3 * Years, audIndex)
+            .withFixedRate(0.03)
             .withEffectiveDate(startDate)
             .withTerminationDate(endDate3Y);
     Size aud3YPeriods = aud3Y->fixedSchedule().size() - 1;
@@ -458,7 +470,8 @@ BOOST_AUTO_TEST_CASE(testFixedTenorInferenceWithTerminationDate) {
     // GBP 10Y without withEffectiveDate (settlement-derived start date)
     Date endDateSettlement = today + 10 * Years;
     ext::shared_ptr<VanillaSwap> gbpNoEffDate =
-        MakeVanillaSwap(10 * Years, gbpIndex, 0.03)
+        MakeVanillaSwap(10 * Years, gbpIndex)
+            .withFixedRate(0.03)
             .withTerminationDate(endDateSettlement);
     Size gbpNoEffPeriods = gbpNoEffDate->fixedSchedule().size() - 1;
     if (gbpNoEffPeriods != 20)
@@ -468,7 +481,8 @@ BOOST_AUTO_TEST_CASE(testFixedTenorInferenceWithTerminationDate) {
     // withTerminationDate clears the constructor tenor, so the
     // date-based inference should use the 10Y span, not the 6M arg
     ext::shared_ptr<VanillaSwap> gbpMismatch =
-        MakeVanillaSwap(6 * Months, gbpIndex, 0.03)
+        MakeVanillaSwap(6 * Months, gbpIndex)
+            .withFixedRate(0.03)
             .withEffectiveDate(startDate)
             .withTerminationDate(endDate10Y);
     Size mismatchPeriods = gbpMismatch->fixedSchedule().size() - 1;
@@ -478,7 +492,8 @@ BOOST_AUTO_TEST_CASE(testFixedTenorInferenceWithTerminationDate) {
 
     // Explicit withFixedLegTenor should always take precedence
     ext::shared_ptr<VanillaSwap> gbpOverride =
-        MakeVanillaSwap(10 * Years, gbpIndex, 0.03)
+        MakeVanillaSwap(10 * Years, gbpIndex)
+            .withFixedRate(0.03)
             .withEffectiveDate(startDate)
             .withTerminationDate(endDate10Y)
             .withFixedLegTenor(3 * Months);
@@ -486,6 +501,222 @@ BOOST_AUTO_TEST_CASE(testFixedTenorInferenceWithTerminationDate) {
     if (overridePeriods != 40)
         BOOST_FAIL("GBP 10Y with explicit 3M fixed tenor: expected 40 "
                    "fixed periods (Quarterly), got " << overridePeriods);
+}
+
+BOOST_AUTO_TEST_CASE(testSettlementDaysEffectiveDateConflict) {
+    BOOST_TEST_MESSAGE("Testing that MakeVanillaSwap rejects "
+                       "settlementDays and effectiveDate together...");
+
+    SavedSettings backup;
+    Date today(15, January, 2026);
+    Settings::instance().evaluationDate() = today;
+
+    RelinkableHandle<YieldTermStructure> yts;
+    yts.linkTo(flatRate(0.03, Actual365Fixed()));
+
+    auto index = ext::make_shared<Euribor6M>(yts);
+    Date effectiveDate(19, January, 2026);
+
+    // settlementDays first, then effectiveDate
+    BOOST_CHECK_EXCEPTION(
+        ext::shared_ptr<VanillaSwap> swap =
+            MakeVanillaSwap(5 * Years, index)
+                .withFixedRate(0.03)
+                .withSettlementDays(2)
+                .withEffectiveDate(effectiveDate),
+        Error,
+        ExpectedErrorMessage("cannot set both"));
+
+    // effectiveDate first, then settlementDays
+    BOOST_CHECK_EXCEPTION(
+        ext::shared_ptr<VanillaSwap> swap =
+            MakeVanillaSwap(5 * Years, index)
+                .withFixedRate(0.03)
+                .withEffectiveDate(effectiveDate)
+                .withSettlementDays(2),
+        Error,
+        ExpectedErrorMessage("cannot set both"));
+
+    // withSettlementDays alone works
+    ext::shared_ptr<VanillaSwap> swap1 =
+        MakeVanillaSwap(5 * Years, index)
+            .withFixedRate(0.03)
+            .withSettlementDays(2);
+    BOOST_CHECK(swap1->startDate() != Date());
+
+    // withEffectiveDate alone works
+    ext::shared_ptr<VanillaSwap> swap2 =
+        MakeVanillaSwap(5 * Years, index)
+            .withFixedRate(0.03)
+            .withEffectiveDate(effectiveDate);
+    BOOST_CHECK_EQUAL(swap2->startDate(), effectiveDate);
+
+    // neither set (constructor defaults) works
+    ext::shared_ptr<VanillaSwap> swap3 =
+        MakeVanillaSwap(5 * Years, index)
+            .withFixedRate(0.03);
+    BOOST_CHECK(swap3->startDate() != Date());
+}
+
+BOOST_AUTO_TEST_CASE(testSpotDateUsesFixingCalendar) {
+    BOOST_TEST_MESSAGE("Testing that MakeVanillaSwap derives the spot date "
+                       "on the index fixing calendar...");
+
+    // Regression test for issue #2546: when the index fixing calendar and the
+    // float/payment calendar disagree (a non-deliverable IRS with a local
+    // fixing calendar and a joint payment calendar), the spot date used to be
+    // pre-adjusted on the payment calendar but then advanced by valueDate on
+    // the fixing calendar, producing a start date one business day late.
+
+    SavedSettings backup;
+
+    RelinkableHandle<YieldTermStructure> yts;
+    yts.linkTo(flatRate(0.03, Actual365Fixed()));
+
+    Calendar fixingCalendar = Taiwan();
+    Calendar paymentCalendar =
+        JointCalendar(Taiwan(),
+                      UnitedStates(UnitedStates::FederalReserve));
+
+    Natural fixingDays = 2;
+    auto index = ext::make_shared<IborIndex>(
+        "Taibor3M", 3 * Months, fixingDays, TWDCurrency(),
+        fixingCalendar, ModifiedFollowing, true, Actual365Fixed(), yts);
+
+    // 19 January 2026 is the third Monday of January (Martin Luther King's
+    // birthday): a US Federal Reserve holiday but a Taiwan business day, so
+    // the fixing calendar and the joint payment calendar diverge here.
+    Date today(19, January, 2026);
+    Settings::instance().evaluationDate() = today;
+
+    // The correct spot date is defined entirely by the index, i.e. the eval
+    // date adjusted and advanced on the fixing calendar.
+    Date refDate = fixingCalendar.adjust(today);
+    Date expectedStart = index->valueDate(refDate);
+
+    ext::shared_ptr<VanillaSwap> swap =
+        MakeVanillaSwap(1 * Years, index)
+            .withFixedRate(0.03)
+            .withFixedLegTenor(1 * Years)
+            .withFixedLegDayCount(Actual365Fixed())
+            .withFloatingLegCalendar(paymentCalendar)
+            .withFixedLegCalendar(paymentCalendar);
+
+    if (swap->startDate() != expectedStart)
+        BOOST_FAIL("MakeVanillaSwap spot date should be derived on the index "
+                   "fixing calendar.\n"
+                   "    expected: " << expectedStart << "\n"
+                   "    obtained: " << swap->startDate());
+
+    // Sanity check: the buggy path pre-adjusted on the joint calendar, which
+    // would have rolled 19 January forward to 20 January before the 2-day
+    // fixing advance, landing one business day late.
+    Date buggyRef = paymentCalendar.adjust(today);
+    Date buggyStart = index->valueDate(buggyRef);
+    BOOST_CHECK(buggyStart != expectedStart);
+}
+
+BOOST_AUTO_TEST_CASE(testSpotDateFromNonBusinessEvaluationDate) {
+
+    BOOST_TEST_MESSAGE("Testing that the swap spot date is calculated from "
+                       "the actual evaluation date when the latter is not a "
+                       "business day...");
+
+    // Saturday
+    Date today(20, June, 2026);
+    Settings::instance().evaluationDate() = today;
+
+    auto index = ext::make_shared<Euribor6M>();
+    Calendar calendar = index->fixingCalendar();
+
+    // settlement days are counted from the actual trade date,
+    // not from the next business day
+    Date expectedStart = calendar.advance(today, 2 * Days);
+
+    ext::shared_ptr<VanillaSwap> swap =
+        MakeVanillaSwap(5 * Years, index)
+            .withFixedRate(0.03)
+            .withSettlementDays(2);
+
+    if (swap->startDate() != expectedStart)
+        BOOST_FAIL("swap start date not calculated from the actual "
+                   "evaluation date:\n"
+                   "    expected: " << expectedStart << "\n"
+                   "    obtained: " << swap->startDate());
+}
+
+BOOST_AUTO_TEST_CASE(testSettlementCalendar) {
+
+    BOOST_TEST_MESSAGE("Testing that the swap spot date can be calculated "
+                       "on an explicit settlement calendar...");
+
+    // 3 July 2026 is a TARGET business day, but a US holiday
+    // (Independence Day observed), so the settlement calendar and the
+    // index fixing calendar diverge between here and the spot date.
+    Date today(2, July, 2026);
+    Settings::instance().evaluationDate() = today;
+
+    auto index = ext::make_shared<Euribor6M>();
+    Calendar settlementCalendar =
+        JointCalendar(TARGET(), UnitedStates(UnitedStates::Settlement));
+
+    Date expectedStart = settlementCalendar.advance(today, 2 * Days);
+
+    ext::shared_ptr<VanillaSwap> swap =
+        MakeVanillaSwap(5 * Years, index)
+            .withFixedRate(0.03)
+            .withSettlementDays(2)
+            .withSettlementCalendar(settlementCalendar);
+
+    if (swap->startDate() != expectedStart)
+        BOOST_FAIL("swap start date not calculated on the settlement "
+                   "calendar:\n"
+                   "    expected: " << expectedStart << "\n"
+                   "    obtained: " << swap->startDate());
+
+    // sanity check: the two calendars must actually diverge here
+    BOOST_CHECK(expectedStart !=
+                index->fixingCalendar().advance(today, 2 * Days));
+}
+
+BOOST_AUTO_TEST_CASE(testZeroBpsFairRateAndSpread) {
+
+    BOOST_TEST_MESSAGE(
+        "Testing vanilla swap fair rate/spread calculation with zero BPS...");
+
+    CommonVars vars;
+    vars.nominal = 0.0;
+    ext::shared_ptr<VanillaSwap> swap = vars.makeSwap(10, 0.0, 0.0);
+
+    BOOST_CHECK(!swap->isExpired());
+    BOOST_CHECK_EQUAL(swap->legBPS(0), 0.0);
+    BOOST_CHECK_EQUAL(swap->legBPS(1), 0.0);
+
+    BOOST_CHECK_EXCEPTION(
+        swap->fairRate(), Error,
+        ExpectedErrorMessage("result not available"));
+    BOOST_CHECK_EXCEPTION(
+        swap->fairSpread(), Error,
+        ExpectedErrorMessage("result not available"));
+}
+
+BOOST_AUTO_TEST_CASE(testExpiredSwapFairRateAndSpread) {
+
+    BOOST_TEST_MESSAGE(
+        "Testing vanilla swap fair rate/spread for expired swap...");
+
+    CommonVars vars;
+    ext::shared_ptr<VanillaSwap> swap = vars.makeSwap(10, 0.0, 0.0);
+
+    Settings::instance().evaluationDate() = vars.settlement + Period(20, Years);
+
+    BOOST_CHECK(swap->isExpired());
+    BOOST_CHECK_EXCEPTION(
+        swap->fairRate(), Error,
+        ExpectedErrorMessage("result not available"));
+    BOOST_CHECK_EXCEPTION(
+        swap->fairSpread(), Error,
+        ExpectedErrorMessage("result not available"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

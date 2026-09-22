@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2025 Paolo D'Elia
+ Copyright (C) 2026 Yassine Idyiahia
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -19,7 +20,9 @@
 #include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/termstructures/volatility/interpolatedsmilesection.hpp>
+#include <ql/math/distributions/normaldistribution.hpp>
 #include <ql/math/interpolations/linearinterpolation.hpp>
+#include <ql/pricingengines/blackformula.hpp>
 #include <ql/quotes/simplequote.hpp>
 #include <ql/time/daycounters/actual365fixed.hpp>
 
@@ -41,7 +44,7 @@ static Real linearInterp(Real x, Real x1, Real y1, Real x2, Real y2) {
 }
 
 BOOST_AUTO_TEST_CASE(testInterpolationAndVariance) {
-    BOOST_TEST_MESSAGE("Testing basic behaviour of linearly interpolated smile section...");
+    BOOST_TEST_MESSAGE("Testing basic behavior of linearly interpolated smile section...");
     // basic scenario: sorted strikes, constructor taking stdDevs (total std devs)
     Time expiry = 0.25; // 3 months
     Real sqrtT = std::sqrt(expiry);
@@ -65,11 +68,11 @@ BOOST_AUTO_TEST_CASE(testInterpolationAndVariance) {
     Real expectedVol = linearInterp(strike, 90.0, v90, 100.0, v100);
 
     Real tol = 1e-12;
-    BOOST_CHECK_CLOSE(section->volatilityImpl(strike), expectedVol, tol);
+    QL_CHECK_CLOSE(section->volatilityImpl(strike), expectedVol, tol);
 
     // variance should be vol^2 * T
     Real expectedVar = expectedVol * expectedVol * expiry;
-    BOOST_CHECK_CLOSE(section->varianceImpl(strike), expectedVar, tol);
+    QL_CHECK_CLOSE(section->varianceImpl(strike), expectedVar, tol);
 }
 
 BOOST_AUTO_TEST_CASE(testExtrapolationWhenAllowed) {
@@ -95,7 +98,7 @@ BOOST_AUTO_TEST_CASE(testExtrapolationWhenAllowed) {
     Real expectedLow = linearInterp(strikeLow, 90.0, v90, 100.0, v100);
 
     Real tol = 1e-12;
-    BOOST_CHECK_CLOSE(section->volatilityImpl(strikeLow), expectedLow, tol);
+    QL_CHECK_CLOSE(section->volatilityImpl(strikeLow), expectedLow, tol);
 
     // extrapolate above max strike, e.g., 120 using last segment 110-100
     Real v110 = stdDevs[2] / sqrtT;
@@ -103,7 +106,7 @@ BOOST_AUTO_TEST_CASE(testExtrapolationWhenAllowed) {
     // use last two points (110, v110) and (100, v100) for extrapolation;
     // linearInterp works for extrapolation as well
     Real expectedHigh = linearInterp(strikeHigh, 110.0, v110, 100.0, v100);
-    BOOST_CHECK_CLOSE(section->volatilityImpl(strikeHigh), expectedHigh, tol);
+    QL_CHECK_CLOSE(section->volatilityImpl(strikeHigh), expectedHigh, tol);
 }
 
 BOOST_AUTO_TEST_CASE(testHandlesUpdatePropagates) {
@@ -118,9 +121,9 @@ BOOST_AUTO_TEST_CASE(testHandlesUpdatePropagates) {
     ext::shared_ptr<SimpleQuote> q1(new SimpleQuote(0.15 * sqrtT));
     ext::shared_ptr<SimpleQuote> q2(new SimpleQuote(0.18 * sqrtT));
     std::vector<Handle<Quote>> stdDevHandles;
-    stdDevHandles.emplace_back(Handle<Quote>(q0));
-    stdDevHandles.emplace_back(Handle<Quote>(q1));
-    stdDevHandles.emplace_back(Handle<Quote>(q2));
+    stdDevHandles.emplace_back(q0);
+    stdDevHandles.emplace_back(q1);
+    stdDevHandles.emplace_back(q2);
 
     ext::shared_ptr<SimpleQuote> atm(new SimpleQuote(95.0));
     Handle<Quote> atmHandle(atm);
@@ -135,7 +138,7 @@ BOOST_AUTO_TEST_CASE(testHandlesUpdatePropagates) {
     Real expectedBefore = linearInterp(95.0, 90.0, v90, 100.0, v100);
 
     Real tol = 1e-12;
-    BOOST_CHECK_CLOSE(section->volatilityImpl(95.0), expectedBefore, tol);
+    QL_CHECK_CLOSE(section->volatilityImpl(95.0), expectedBefore, tol);
 
     // now change the middle quote q1 from 0.15 to 0.20
     q1->setValue(0.20 * sqrtT);
@@ -143,7 +146,7 @@ BOOST_AUTO_TEST_CASE(testHandlesUpdatePropagates) {
     // after changing the quote, the section should reflect the new vol
     Real v90_after = q1->value() / sqrtT;
     Real expectedAfter = linearInterp(95.0, 90.0, v90_after, 100.0, v100);
-    BOOST_CHECK_CLOSE(section->volatilityImpl(95.0), expectedAfter, tol);
+    QL_CHECK_CLOSE(section->volatilityImpl(95.0), expectedAfter, tol);
 }
 
 BOOST_AUTO_TEST_CASE(testFlatStrikeExtrapolation) {
@@ -158,9 +161,9 @@ BOOST_AUTO_TEST_CASE(testFlatStrikeExtrapolation) {
     ext::shared_ptr<SimpleQuote> q1(new SimpleQuote(0.15 * sqrtT));
     ext::shared_ptr<SimpleQuote> q2(new SimpleQuote(0.18 * sqrtT));
     std::vector<Handle<Quote>> stdDevHandles;
-    stdDevHandles.emplace_back(Handle<Quote>(q0));
-    stdDevHandles.emplace_back(Handle<Quote>(q1));
-    stdDevHandles.emplace_back(Handle<Quote>(q2));
+    stdDevHandles.emplace_back(q0);
+    stdDevHandles.emplace_back(q1);
+    stdDevHandles.emplace_back(q2);
 
     ext::shared_ptr<SimpleQuote> atm(new SimpleQuote(95.0));
     Handle<Quote> atmHandle(atm);
@@ -175,18 +178,18 @@ BOOST_AUTO_TEST_CASE(testFlatStrikeExtrapolation) {
     Real strikeLow = 85.0;
 
     Real tol = 1e-12;
-    BOOST_CHECK_CLOSE(section->volatilityImpl(strikeLow), v90, tol);
+    QL_CHECK_CLOSE(section->volatilityImpl(strikeLow), v90, tol);
 
     // Check with strike higher than maxStrike()
     Real v110 = q2->value() / sqrtT;
     Real strikeHigh = 120.0;
 
-    BOOST_CHECK_CLOSE(section->volatilityImpl(strikeHigh), v110, tol);
+    QL_CHECK_CLOSE(section->volatilityImpl(strikeHigh), v110, tol);
 
     //Change minStrike vol quote and check if out-of-bounds vol is the same
     q0->setValue(0.21 * sqrtT);
     Real v90_after = q0->value() / sqrtT;
-    BOOST_CHECK_CLOSE(section->volatilityImpl(strikeLow), v90_after, tol);
+    QL_CHECK_CLOSE(section->volatilityImpl(strikeLow), v90_after, tol);
 }
 
 BOOST_AUTO_TEST_CASE(testErrorThrowingWhenNonSortedStrikes) {
@@ -208,6 +211,126 @@ BOOST_AUTO_TEST_CASE(testErrorThrowingWhenNonSortedStrikes) {
         ),
         QuantLib::Error
     );
+}
+
+BOOST_AUTO_TEST_CASE(testDigitalOptionPriceAtLargeStrikes) {
+    BOOST_TEST_MESSAGE("Testing digital option price at strikes large enough "
+                       "to absorb the differencing gap...");
+
+    // The digital differences the option price across a gap. Once the gap falls
+    // below the strike's own precision the interval quantizes to whole ulps, and
+    // the probability that comes back is wrong without anything reporting it.
+    // The low levels also pin the unaffected range, where the floor never binds.
+    Time expiry = 1.0;
+    Real sqrtT = std::sqrt(expiry);
+    Volatility vol = 0.20;
+    Real tol = 1e-4;
+
+    // At the money with a flat smile, P(S > F) = N(-sigma sqrt(T) / 2),
+    // independent of the level.
+    Real expected = CumulativeNormalDistribution()(-0.5 * vol * sqrtT);
+
+    for (Real atmLevel : { 1.0e2, 1.0e3, 1.0e6, 1.0e11 }) {
+        std::vector<Rate> strikes{0.9 * atmLevel, atmLevel, 1.1 * atmLevel};
+        std::vector<Real> stdDevs{vol * sqrtT, vol * sqrtT, vol * sqrtT};
+
+        auto section = ext::make_shared<InterpolatedSmileSection<Linear> >(
+            expiry, strikes, stdDevs, atmLevel);
+
+        Real calculated = section->digitalOptionPrice(atmLevel, Option::Call, 1.0);
+
+        if (std::fabs(calculated - expected) > tol) {
+            BOOST_FAIL("failed to reproduce the digital option price at a large strike"
+                       << "\n   strike:     " << atmLevel
+                       << "\n   calculated: " << calculated
+                       << "\n   expected:   " << expected
+                       << "\n   diff:       " << calculated - expected
+                       << "\n   tolerance:  " << tol);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testDensityAtLargeStrikes) {
+    BOOST_TEST_MESSAGE("Testing smile-section density at equity index level "
+                       "strikes, which absorb the differencing gap...");
+
+    // density differences the digital across a gap, and the digital itself
+    // differences the option price, so the roundoff is |strike|*eps/gap^2
+    // against a density falling like 1/strike. The relative error therefore
+    // grows like strike^2 and reaches 100% around 3e4 -- Nikkei or Hang Seng
+    // levels -- so a fixed gap fails far earlier here than for the digital.
+    Time expiry = 1.0;
+    Real sqrtT = std::sqrt(expiry);
+    Volatility vol = 0.20;
+    Real tol = 1e-3;
+
+    // At 1e2 the floor coincides with the default gap and nothing changes. The
+    // middle three are KOSPI, S&P 500 and Nikkei 225 levels, where the unfixed
+    // density is respectively 0.2%, 8% and 600% out. Past 1e6 the second
+    // difference is pure roundoff and can come back negative.
+    for (Real atmLevel : { 1.0e2, 2.5e3, 5.0e3, 3.8e4, 1.0e6, 1.0e11 }) {
+        std::vector<Rate> strikes{0.9 * atmLevel, atmLevel, 1.1 * atmLevel};
+        std::vector<Real> stdDevs{vol * sqrtT, vol * sqrtT, vol * sqrtT};
+
+        auto section = ext::make_shared<InterpolatedSmileSection<Linear> >(
+            expiry, strikes, stdDevs, atmLevel);
+
+        Real calculated = section->density(atmLevel, 1.0);
+
+        // At the money with a flat smile the Black density is
+        // phi(d2) / (K sigma sqrt(T)) with d2 = -sigma sqrt(T) / 2.
+        Real d2 = -0.5 * vol * sqrtT;
+        Real expected = NormalDistribution()(d2) / (atmLevel * vol * sqrtT);
+
+        // NaN would make the relative error below compare
+        // false against the tolerance and slip through.
+        BOOST_REQUIRE(std::isfinite(value(calculated)));
+        Real relError = std::fabs(calculated - expected) / expected;
+        if (relError > tol) {
+            BOOST_FAIL("failed to reproduce the density at a large strike"
+                       << "\n   strike:     " << atmLevel
+                       << "\n   calculated: " << calculated
+                       << "\n   expected:   " << expected
+                       << "\n   rel error:  " << relError
+                       << "\n   tolerance:  " << tol);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testDensityHonoursExplicitGap) {
+    BOOST_TEST_MESSAGE("Testing that smile-section density honours an explicit gap...");
+
+    // A gap above the floor must reach both digitals and the divisor, leaving
+    // density the central second difference of the call price.
+    Time expiry = 1.0;
+    Real sqrtT = std::sqrt(expiry);
+    Volatility vol = 0.20;
+    Real atmLevel = 1.0e11;
+    Real gap = 1.0e10;
+
+    std::vector<Rate> strikes{0.9 * atmLevel, atmLevel, 1.1 * atmLevel};
+    std::vector<Real> stdDevs{vol * sqrtT, vol * sqrtT, vol * sqrtT};
+
+    auto section = ext::make_shared<InterpolatedSmileSection<Linear> >(
+        expiry, strikes, stdDevs, atmLevel);
+
+    Real calculated = section->density(atmLevel, 1.0, gap);
+
+    Real stdDev = vol * sqrtT;
+    Real expected = (blackFormula(Option::Call, atmLevel - gap, atmLevel, stdDev) -
+                     2.0 * blackFormula(Option::Call, atmLevel, atmLevel, stdDev) +
+                     blackFormula(Option::Call, atmLevel + gap, atmLevel, stdDev)) / (gap * gap);
+
+    Real tol = 1e-8;
+    Real relError = std::fabs(calculated - expected) / expected;
+    if (relError > tol) {
+        BOOST_FAIL("failed to honour the explicit gap"
+                   << "\n   gap:        " << gap
+                   << "\n   calculated: " << calculated
+                   << "\n   expected:   " << expected
+                   << "\n   rel error:  " << relError
+                   << "\n   tolerance:  " << tol);
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

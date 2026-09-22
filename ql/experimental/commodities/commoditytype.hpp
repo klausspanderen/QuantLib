@@ -43,7 +43,7 @@ namespace QuantLib {
           used.
         */
         CommodityType() = default;
-        CommodityType(const std::string& code, const std::string& name);
+        CommodityType(const std::string& name, const std::string& code);
         //! \name Inspectors
         //@{
         //! commodity code, e.g, "HO"

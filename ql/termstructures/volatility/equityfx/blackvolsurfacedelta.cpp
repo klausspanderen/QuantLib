@@ -2,6 +2,7 @@
  Copyright (C) 2019 Quaternion Risk Management Ltd
  Copyright (C) 2022 Skandinaviska Enskilda Banken AB (publ)
  Copyright (C) 2025 Paolo D'Elia
+ Copyright (C) 2026 Yassine Idyiahia
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -35,21 +36,16 @@ namespace QuantLib {
         const std::vector<Real>& callDeltas, bool hasAtm, const Matrix& blackVolMatrix, const DayCounter& dayCounter,
         const Calendar& cal, const Handle<Quote>& spot, const Handle<YieldTermStructure>& domesticTS,
         const Handle<YieldTermStructure>& foreignTS, DeltaVolQuote::DeltaType deltaType, DeltaVolQuote::AtmType atmType,
-        ext::optional<DeltaVolQuote::DeltaType> atmDeltaType, SmileInterpolationMethod im,
+        std::optional<DeltaVolQuote::DeltaType> atmDeltaType, SmileInterpolationMethod im,
         bool flatStrikeExtrapolation, BlackVolTimeExtrapolation::Type timeExtrapolationType, const Period& switchTenor,
         DeltaVolQuote::DeltaType longTermDeltaType, DeltaVolQuote::AtmType longTermAtmType,
-        ext::optional<DeltaVolQuote::DeltaType> longTermAtmDeltaType)
+        std::optional<DeltaVolQuote::DeltaType> longTermAtmDeltaType)
     : BlackVolatilityTermStructure(referenceDate, cal, Following, dayCounter), dates_(dates), times_(dates.size(), 0),
       putDeltas_(putDeltas), callDeltas_(callDeltas), hasAtm_(hasAtm), spot_(spot), domesticTS_(domesticTS),
-      foreignTS_(foreignTS), deltaType_(deltaType), atmType_(atmType), atmDeltaType_(atmDeltaType),
+      foreignTS_(foreignTS), deltaType_(deltaType), atmType_(atmType), atmDeltaType_(atmDeltaType ? *atmDeltaType : deltaType),
       interpolationMethod_(im), flatStrikeExtrapolation_(flatStrikeExtrapolation), timeExtrapolationType_(timeExtrapolationType),
       switchTenor_(switchTenor), longTermDeltaType_(longTermDeltaType), longTermAtmType_(longTermAtmType),
-      longTermAtmDeltaType_(longTermAtmDeltaType) {
-
-        if (!atmDeltaType_)
-            atmDeltaType_ = deltaType_;
-        if (!longTermAtmDeltaType_)
-            longTermAtmDeltaType_ = longTermDeltaType_;
+      longTermAtmDeltaType_(longTermAtmDeltaType ? *longTermAtmDeltaType : longTermDeltaType) {
 
         // set switch time
         switchTime_ = switchTenor_ == 0 * Days ? QL_MAX_REAL : timeFromReference(optionDateFromTenor(switchTenor));
@@ -107,11 +103,11 @@ namespace QuantLib {
         if (t < switchTime_ && !close_enough(t, switchTime_)) {
             at = atmType_;
             dt = deltaType_;
-            atmDt = *atmDeltaType_;
+            atmDt = atmDeltaType_;
         } else {
             at = longTermAtmType_;
             dt = longTermDeltaType_;
-            atmDt = *longTermAtmDeltaType_;
+            atmDt = longTermAtmDeltaType_;
         }
 
         // Store smile section in map. Use strikes as key and vols as values for automatic sorting by strike.
@@ -211,13 +207,13 @@ namespace QuantLib {
         return blackVolSmile(timeFromReference(d));
     }
 
-    Real BlackVolatilitySurfaceDelta::forward(Time t) const {
+    Real BlackVolatilitySurfaceDelta::atmLevel(Time t) const {
         return spot_->value() * foreignTS_->discount(t) / domesticTS_->discount(t); // TODO
     }
 
     Volatility BlackVolatilitySurfaceDelta::blackVolImpl(Time t, Real strike) const {
         // If asked for strike == 0, just return the ATM value.
-        double tme =
+        Time tme =
             (t > times_.back() && timeExtrapolationType_ == BlackVolTimeExtrapolation::FlatVolatility) ? times_.back() : t;
 
         if (strike == 0 || strike == Null<Real>()) {
@@ -226,7 +222,7 @@ namespace QuantLib {
                 return interpolators_[putDeltas_.size()]->blackVol(tme, Null<Real>(), true);
             } else {
                 // set strike to be fwd and we will return ATMF
-                strike = forward(tme);
+                strike = atmLevel(tme);
             }
         }
         return blackVolSmile(tme)->volatility(strike);

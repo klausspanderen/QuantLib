@@ -45,8 +45,8 @@ namespace QuantLib {
         Pillar::Choice pillar,
         Date customPillarDate,
         RateAveraging::Type averagingMethod,
-        ext::optional<bool> endOfMonth,
-        ext::optional<Frequency> fixedPaymentFrequency,
+        std::optional<bool> endOfMonth,
+        std::optional<Frequency> fixedPaymentFrequency,
         Calendar fixedCalendar,
         Natural lookbackDays,
         Natural lockoutDays,
@@ -83,8 +83,8 @@ namespace QuantLib {
         Pillar::Choice pillar,
         Date customPillarDate,
         RateAveraging::Type averagingMethod,
-        ext::optional<bool> endOfMonth,
-        ext::optional<Frequency> fixedPaymentFrequency,
+        std::optional<bool> endOfMonth,
+        std::optional<Frequency> fixedPaymentFrequency,
         Calendar fixedCalendar,
         Natural lookbackDays,
         Natural lockoutDays,
@@ -129,9 +129,10 @@ namespace QuantLib {
         //    i.e. it can dynamically change
         // 2. input discount curve Handle might be empty now but it could
         //    be assigned a curve later; use a RelinkableHandle here
-        auto tmp = MakeOIS(tenor_, overnightIndex_, 0.0, forwardStart_)
+        auto tmp = MakeOIS(tenor_, overnightIndex_)
+            .withFixedRate(0.0)
+            .withForwardStart(forwardStart_)
             .withDiscountingTermStructure(discountRelinkableHandle_)
-            .withSettlementDays(settlementDays_)  // resets effectiveDate
             .withEffectiveDate(startDate_)
             .withTerminationDate(endDate_)
             .withTelescopicValueDates(telescopicValueDates_)
@@ -158,6 +159,9 @@ namespace QuantLib {
         if (!overnightCalendar_.empty()) {
             tmp.withOvernightLegCalendar(overnightCalendar_);
         }
+        // only set settlementDays when no explicit start date, to avoid conflict
+        if (startDate_ == Date() && settlementDays_ != Null<Natural>())
+            tmp.withSettlementDays(settlementDays_);
         swap_ = tmp;
 
         if (pricer_)

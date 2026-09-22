@@ -45,6 +45,10 @@ namespace QuantLib {
         return std::sqrt(w(x))*value(n, x);
     }
 
+    Real GaussianOrthogonalPolynomial::logW(Real x) const {
+        return std::log(w(x));
+    }
+
 
     GaussLaguerrePolynomial::GaussLaguerrePolynomial(Real s)
     : s_(s) {
@@ -67,8 +71,8 @@ namespace QuantLib {
         return std::pow(x, s_)*std::exp(-x);
     }
 
-    Real GaussLaguerrePolynomial::sqrt_w(Real x) const {
-        return std::pow(x, 0.5*s_)*std::exp(-0.5*x);
+    Real GaussLaguerrePolynomial::logW(Real x) const {
+        return s_*std::log(x) - x;
     }
 
 
@@ -93,8 +97,8 @@ namespace QuantLib {
         return std::pow(std::fabs(x), 2*mu_)*std::exp(-x*x);
     }
 
-    Real GaussHermitePolynomial::sqrt_w(Real x) const {
-        return std::pow(std::fabs(x), mu_)*std::exp(-0.5*x*x);
+    Real GaussHermitePolynomial::logW(Real x) const {
+        return 2.0*mu_*std::log(std::fabs(x)) - x*x;
     }
 
     GaussJacobiPolynomial::GaussJacobiPolynomial(Real alpha, Real beta)
@@ -152,10 +156,6 @@ namespace QuantLib {
 
     Real GaussJacobiPolynomial::w(Real x) const {
         return std::pow(1-x, alpha_)*std::pow(1+x, beta_);
-    }
-
-    Real GaussJacobiPolynomial::sqrt_w(Real x) const {
-        return std::pow(1-x, 0.5*alpha_)*std::pow(1+x, 0.5*beta_);
     }
 
 

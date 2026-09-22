@@ -1,4 +1,5 @@
 # Compilation artifacts
+__pycache__/
 configure
 quantlib-config
 libtool
@@ -121,3 +122,8 @@ nbproject
 .dir-locals.el
 Build.props
 Directory.Build.props
+
+# clangd index cache and compilation database symlink
+# (generated via CMAKE_EXPORT_COMPILE_COMMANDS=ON)
+.cache/
+compile_commands.json

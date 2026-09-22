@@ -2,6 +2,7 @@
  Copyright (C) 2019 Quaternion Risk Management Ltd
  Copyright (C) 2020 Skandinaviska Enskilda Banken AB (publ)
  Copyright (C) 2025 Paolo D'Elia
+ Copyright (C) 2026 Yassine Idyiahia
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -18,13 +19,16 @@
 */
 
 #include "toplevelfixture.hpp"
+#include "utilities.hpp"
 #include <boost/make_shared.hpp>
 #include <boost/test/unit_test.hpp>
+#include <ql/pricingengines/blackformula.hpp>
 #include <ql/quotes/simplequote.hpp>
+#include <ql/termstructures/volatility/equityfx/blackvolsurfacedelta.hpp>
+#include <ql/termstructures/volatility/smilesection.hpp>
 #include <ql/termstructures/yield/flatforward.hpp>
 #include <ql/time/calendars/target.hpp>
 #include <ql/time/daycounters/actualactual.hpp>
-#include <ql/termstructures/volatility/equityfx/blackvolsurfacedelta.hpp>
 
 using namespace boost::unit_test_framework;
 using namespace QuantLib;
@@ -64,7 +68,7 @@ BOOST_AUTO_TEST_CASE(testBlackVolSurfaceDeltaConstantVol) {
     for (Time t : { 0.25, 0.5, 1.0, 1.5, 2.0, 2.5, 10.0 }) {
         for (Real k = 0.5; k < 2.0; k += 0.05) {
             Volatility vol = surface.blackVol(t, k);
-            BOOST_CHECK_CLOSE(vol, constVol, 1e-12);
+            QL_CHECK_CLOSE(vol, constVol, 1e-12);
         }
     }
 }
@@ -108,23 +112,23 @@ BOOST_AUTO_TEST_CASE(testBlackVolSurfaceDeltaNonConstantVol) {
 
     // ask for volatility at 1M (present in the matrix)
     auto smile1M = surface.blackVolSmile(refDate + Period(1, Months));
-    BOOST_CHECK_CLOSE(smile1M->volatility(atmStrike), 0.13010360399, 1e-8);
+    QL_CHECK_CLOSE(smile1M->volatility(atmStrike), 0.13010360399, 1e-8);
 
     // ask for volatility at 15D (using time interpolation) should be the same as the 1M
     auto smile15D = surface.blackVolSmile(refDate + Period(15, Days));
-    BOOST_CHECK_CLOSE(smile15D->volatility(atmStrike), 0.13007226607, 1e-8);
+    QL_CHECK_CLOSE(smile15D->volatility(atmStrike), 0.13007226607, 1e-8);
 
     // ask for volatility at 3M (using time interpolation)
     auto smile3M = surface.blackVolSmile(refDate + Period(3, Months));
-    BOOST_CHECK_CLOSE(smile3M->volatility(atmStrike), 0.115077252583, 1e-8);
+    QL_CHECK_CLOSE(smile3M->volatility(atmStrike), 0.115077252583, 1e-8);
 
     // ask for volatility at 6M for "extreme" strikes (using strike extrapolation)
     Real lowStrike = 1.10;
     Real highStrike = 1.30;
 
     auto smile6M = surface.blackVolSmile(refDate + Period(6, Months));
-    BOOST_CHECK_CLOSE(smile6M->volatility(lowStrike), 0.1411379628132, 1e-8);
-    BOOST_CHECK_CLOSE(smile6M->volatility(highStrike), 0.136291154962, 1e-8);
+    QL_CHECK_CLOSE(smile6M->volatility(lowStrike), 0.1411379628132, 1e-8);
+    QL_CHECK_CLOSE(smile6M->volatility(highStrike), 0.136291154962, 1e-8);
 }
 
 
@@ -161,44 +165,44 @@ BOOST_AUTO_TEST_CASE(testTimeExtrapolation) {
 
     BlackVolatilitySurfaceDelta surface1(refDate, dates, putDeltas, callDeltas, hasAtm, vols, ActualActual(ActualActual::ISDA),
                                          TARGET(), spot, dts, fts, DeltaVolQuote::DeltaType::Spot, DeltaVolQuote::AtmType::AtmSpot,
-                                         ext::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::Linear, false,
+                                         std::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::Linear, false,
                                          BlackVolTimeExtrapolation::FlatVolatility);
 
-    BOOST_CHECK_CLOSE(surface1.blackVol(refDate + Period(2, Years), atmStrike), 0.095, 1e-8);
-    BOOST_CHECK_CLOSE(surface1.blackVol(refDate + Period(2, Years), atmStrike - 0.1), 0.11684859871, 1e-8);
-    BOOST_CHECK_CLOSE(surface1.blackVol(refDate + Period(2, Years), atmStrike + 0.1), 0.11438709864, 1e-8);
-    BOOST_CHECK_CLOSE(surface1.blackVol(refDate + Period(3, Years), atmStrike), 0.095, 1e-8);
-    BOOST_CHECK_CLOSE(surface1.blackVol(refDate + Period(3, Years), atmStrike - 0.1), 0.11684859871, 1e-8);
-    BOOST_CHECK_CLOSE(surface1.blackVol(refDate + Period(3, Years), atmStrike + 0.1), 0.11438709864, 1e-8);
+    QL_CHECK_CLOSE(surface1.blackVol(refDate + Period(2, Years), atmStrike), 0.095, 1e-8);
+    QL_CHECK_CLOSE(surface1.blackVol(refDate + Period(2, Years), atmStrike - 0.1), 0.11684859871, 1e-8);
+    QL_CHECK_CLOSE(surface1.blackVol(refDate + Period(2, Years), atmStrike + 0.1), 0.11438709864, 1e-8);
+    QL_CHECK_CLOSE(surface1.blackVol(refDate + Period(3, Years), atmStrike), 0.095, 1e-8);
+    QL_CHECK_CLOSE(surface1.blackVol(refDate + Period(3, Years), atmStrike - 0.1), 0.11684859871, 1e-8);
+    QL_CHECK_CLOSE(surface1.blackVol(refDate + Period(3, Years), atmStrike + 0.1), 0.11438709864, 1e-8);
 
     // linear variance extrapolation
 
     BlackVolatilitySurfaceDelta surface2(refDate, dates, putDeltas, callDeltas, hasAtm, vols, ActualActual(ActualActual::ISDA),
                                          TARGET(), spot, dts, fts, DeltaVolQuote::DeltaType::Spot, DeltaVolQuote::AtmType::AtmSpot,
-                                         ext::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::Linear, false,
+                                         std::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::Linear, false,
                                          BlackVolTimeExtrapolation::LinearVariance);
 
-    BOOST_CHECK_CLOSE(surface2.blackVol(refDate + Period(2, Years), atmStrike), 0.095, 1e-8);
-    BOOST_CHECK_CLOSE(surface2.blackVol(refDate + Period(2, Years), atmStrike - 0.1), 0.11684859871, 1e-8);
-    BOOST_CHECK_CLOSE(surface2.blackVol(refDate + Period(2, Years), atmStrike + 0.1), 0.11438709864, 1e-8);
-    BOOST_CHECK_CLOSE(surface2.blackVol(refDate + Period(3, Years), atmStrike), 0.09327379053, 1e-8);
-    BOOST_CHECK_CLOSE(surface2.blackVol(refDate + Period(3, Years), atmStrike - 0.1), 0.11174756764, 1e-8);
-    BOOST_CHECK_CLOSE(surface2.blackVol(refDate + Period(3, Years), atmStrike + 0.1), 0.11128755593, 1e-8);
+    QL_CHECK_CLOSE(surface2.blackVol(refDate + Period(2, Years), atmStrike), 0.095, 1e-8);
+    QL_CHECK_CLOSE(surface2.blackVol(refDate + Period(2, Years), atmStrike - 0.1), 0.11684859871, 1e-8);
+    QL_CHECK_CLOSE(surface2.blackVol(refDate + Period(2, Years), atmStrike + 0.1), 0.11438709864, 1e-8);
+    QL_CHECK_CLOSE(surface2.blackVol(refDate + Period(3, Years), atmStrike), 0.09327379053, 1e-8);
+    QL_CHECK_CLOSE(surface2.blackVol(refDate + Period(3, Years), atmStrike - 0.1), 0.11174756764, 1e-8);
+    QL_CHECK_CLOSE(surface2.blackVol(refDate + Period(3, Years), atmStrike + 0.1), 0.11128755593, 1e-8);
 
     // delegate to underlying interpolator (also linear variance)
 
     BlackVolatilitySurfaceDelta surface3(refDate, dates, putDeltas, callDeltas, hasAtm, vols, ActualActual(ActualActual::ISDA),
                                          TARGET(), spot, dts, fts, DeltaVolQuote::DeltaType::Spot, DeltaVolQuote::AtmType::AtmSpot,
-                                         ext::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::Linear, false,
+                                         std::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::Linear, false,
                                          BlackVolTimeExtrapolation::UseInterpolator);
     surface3.enableExtrapolation();
 
-    BOOST_CHECK_CLOSE(surface3.blackVol(refDate + Period(2, Years), atmStrike), 0.095, 1e-8);
-    BOOST_CHECK_CLOSE(surface3.blackVol(refDate + Period(2, Years), atmStrike - 0.1), 0.11684859871, 1e-8);
-    BOOST_CHECK_CLOSE(surface3.blackVol(refDate + Period(2, Years), atmStrike + 0.1), 0.11438709864, 1e-8);
-    BOOST_CHECK_CLOSE(surface3.blackVol(refDate + Period(3, Years), atmStrike), 0.09327379053, 1e-8);
-    BOOST_CHECK_CLOSE(surface3.blackVol(refDate + Period(3, Years), atmStrike - 0.1), 0.11174756764, 1e-8);
-    BOOST_CHECK_CLOSE(surface3.blackVol(refDate + Period(3, Years), atmStrike + 0.1), 0.11128755593, 1e-8);
+    QL_CHECK_CLOSE(surface3.blackVol(refDate + Period(2, Years), atmStrike), 0.095, 1e-8);
+    QL_CHECK_CLOSE(surface3.blackVol(refDate + Period(2, Years), atmStrike - 0.1), 0.11684859871, 1e-8);
+    QL_CHECK_CLOSE(surface3.blackVol(refDate + Period(2, Years), atmStrike + 0.1), 0.11438709864, 1e-8);
+    QL_CHECK_CLOSE(surface3.blackVol(refDate + Period(3, Years), atmStrike), 0.09327379053, 1e-8);
+    QL_CHECK_CLOSE(surface3.blackVol(refDate + Period(3, Years), atmStrike - 0.1), 0.11174756764, 1e-8);
+    QL_CHECK_CLOSE(surface3.blackVol(refDate + Period(3, Years), atmStrike + 0.1), 0.11128755593, 1e-8);
 }
 
 
@@ -235,61 +239,118 @@ BOOST_AUTO_TEST_CASE(testSmileInterpolation) {
 
     BlackVolatilitySurfaceDelta surface1(refDate, dates, putDeltas, callDeltas, hasAtm, vols, ActualActual(ActualActual::ISDA),
                                          TARGET(), spot, dts, fts, DeltaVolQuote::DeltaType::Spot, DeltaVolQuote::AtmType::AtmSpot,
-                                         ext::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::Linear, false,
+                                         std::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::Linear, false,
                                          BlackVolTimeExtrapolation::FlatVolatility);
 
     auto smile = surface1.blackVolSmile(refDate + Period(6, Months));
-    BOOST_CHECK_CLOSE(smile->volatility(atmStrike), 0.11, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(atmStrike - 0.1), 0.14882625471, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(atmStrike + 0.1), 0.13265179475, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.1), 0.17882625471, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.1), 0.14765179475, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.5), 0.33413127354, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.5), 0.23825897375, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(atmStrike), 0.11, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(atmStrike - 0.1), 0.14882625471, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(atmStrike + 0.1), 0.13265179475, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.1), 0.17882625471, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.1), 0.14765179475, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.5), 0.33413127354, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.5), 0.23825897375, 1e-8);
 
     BlackVolatilitySurfaceDelta surface2(refDate, dates, putDeltas, callDeltas, hasAtm, vols, ActualActual(ActualActual::ISDA),
                                          TARGET(), spot, dts, fts, DeltaVolQuote::DeltaType::Spot, DeltaVolQuote::AtmType::AtmSpot,
-                                         ext::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::NaturalCubic, false,
+                                         std::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::NaturalCubic, false,
                                          BlackVolTimeExtrapolation::FlatVolatility);
 
     smile = surface2.blackVolSmile(refDate + Period(6, Months));
-    BOOST_CHECK_CLOSE(smile->volatility(atmStrike), 0.11, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(atmStrike - 0.1), 0.15285738778, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(atmStrike + 0.1), 0.13548210924, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.1), 0.16572286711, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.1), 0.13314942082, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(atmStrike), 0.11, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(atmStrike - 0.1), 0.15285738778, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(atmStrike + 0.1), 0.13548210924, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.1), 0.16572286711, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.1), 0.13314942082, 1e-8);
     // cubic being cubic
-    BOOST_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.5), 0.0, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.5), 0.0, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.5), 0.0, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.5), 0.0, 1e-8);
 
     BlackVolatilitySurfaceDelta surface3(refDate, dates, putDeltas, callDeltas, hasAtm, vols, ActualActual(ActualActual::ISDA),
                                          TARGET(), spot, dts, fts, DeltaVolQuote::DeltaType::Spot, DeltaVolQuote::AtmType::AtmSpot,
-                                         ext::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::FinancialCubic, false,
+                                         std::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::FinancialCubic, false,
                                          BlackVolTimeExtrapolation::FlatVolatility);
 
     smile = surface3.blackVolSmile(refDate + Period(6, Months));
-    BOOST_CHECK_CLOSE(smile->volatility(atmStrike), 0.11, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(atmStrike - 0.1), 0.15285738778, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(atmStrike + 0.1), 0.13548210924, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.1), 0.16572286711, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.1), 0.13314942082, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.5), 0.0, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.5), 0.0, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(atmStrike), 0.11, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(atmStrike - 0.1), 0.15285738778, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(atmStrike + 0.1), 0.13548210924, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.1), 0.16572286711, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.1), 0.13314942082, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.5), 0.0, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.5), 0.0, 1e-8);
 
     BlackVolatilitySurfaceDelta surface4(refDate, dates, putDeltas, callDeltas, hasAtm, vols, ActualActual(ActualActual::ISDA),
                                          TARGET(), spot, dts, fts, DeltaVolQuote::DeltaType::Spot, DeltaVolQuote::AtmType::AtmSpot,
-                                         ext::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::CubicSpline, false,
+                                         std::nullopt, BlackVolatilitySurfaceDelta::SmileInterpolationMethod::CubicSpline, false,
                                          BlackVolTimeExtrapolation::FlatVolatility);
 
     smile = surface4.blackVolSmile(refDate + Period(6, Months));
-    BOOST_CHECK_CLOSE(smile->volatility(atmStrike), 0.11, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(atmStrike - 0.1), 0.15226345029, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(atmStrike + 0.1), 0.13619688725, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.1), 0.16765348886, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.1), 0.12948693808, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.5), 0.0, 1e-8);
-    BOOST_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.5), 0.0, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(atmStrike), 0.11, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(atmStrike - 0.1), 0.15226345029, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(atmStrike + 0.1), 0.13619688725, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.1), 0.16765348886, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.1), 0.12948693808, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->minStrike() - 0.5), 0.0, 1e-8);
+    QL_CHECK_CLOSE(smile->volatility(smile->maxStrike() + 0.5), 0.0, 1e-8);
 
+}
+
+BOOST_AUTO_TEST_CASE(testSmileSectionWithAtmLevel) {
+    BOOST_TEST_MESSAGE(
+        "Testing SmileSection from a vol surface that overrides "
+        "atmLevel(Time)...");
+
+    // BlackVolatilitySurfaceDelta carries spot + yield curves and overrides
+    // atmLevel(Time), so the SmileSection returned by smileSection() has a
+    // usable atmLevel() and its optionPrice() works without throwing.
+
+    Date refDate(1, January, 2010);
+    Settings::instance().evaluationDate() = refDate;
+    DayCounter dc = ActualActual(ActualActual::ISDA);
+
+    std::vector<Date> dates = {Date(1, January, 2011), Date(1, January, 2012)};
+    std::vector<Real> putDeltas = {-0.25};
+    std::vector<Real> callDeltas = {0.25};
+    Matrix volMatrix(2, 2, 0.10);
+
+    Handle<Quote> spot(ext::make_shared<SimpleQuote>(1.0));
+    Handle<YieldTermStructure> dts(
+        ext::make_shared<FlatForward>(refDate, 0.011, dc));
+    Handle<YieldTermStructure> fts(
+        ext::make_shared<FlatForward>(refDate, 0.012, dc));
+
+    auto surface = ext::make_shared<BlackVolatilitySurfaceDelta>(
+        refDate, dates, putDeltas, callDeltas, false, volMatrix,
+        dc, TARGET(), spot, dts, fts);
+
+    Date maturity(1, July, 2011);
+    auto smile = surface->smileSection(maturity);
+
+    // atmLevel matches spot * df_q / df_r (FX-style forward)
+    Real expectedFwd = spot->value()
+                     * fts->discount(maturity) / dts->discount(maturity);
+    Real atm = smile->atmLevel();
+    Real tolerance = 1.0e-12;
+    if (std::fabs(atm - expectedFwd) > tolerance)
+        BOOST_FAIL("smile atmLevel mismatch"
+                   << std::fixed << std::setprecision(12)
+                   << "\n    calculated: " << atm
+                   << "\n    expected  : " << expectedFwd);
+
+    // optionPrice() works (without the atmLevel(Time) override it would
+    // throw a QL_REQUIRE) and matches the Black formula at the forward.
+    DiscountFactor df = dts->discount(maturity);
+    Real callPrice = smile->optionPrice(expectedFwd, Option::Call, df);
+    Time T = surface->timeFromReference(maturity);
+    Volatility vol = smile->volatility(expectedFwd);
+    Real expectedCall = blackFormula(Option::Call, expectedFwd, expectedFwd,
+                                      vol * std::sqrt(T), df);
+    if (std::fabs(callPrice - expectedCall) > tolerance)
+        BOOST_FAIL("smile optionPrice mismatch"
+                   << std::fixed << std::setprecision(12)
+                   << "\n    calculated: " << callPrice
+                   << "\n    expected  : " << expectedCall);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

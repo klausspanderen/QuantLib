@@ -23,8 +23,10 @@
 #include <ql/instruments/overnightindexfuture.hpp>
 #include <ql/indexes/ibor/sofr.hpp>
 #include <ql/quotes/simplequote.hpp>
+#include <ql/termstructures/yield/flatforward.hpp>
 #include <ql/termstructures/yield/piecewiseyieldcurve.hpp>
 #include <ql/termstructures/yield/overnightindexfutureratehelper.hpp>
+#include <ql/time/daycounters/actual360.hpp>
 #include <iomanip>
 
 using namespace QuantLib;
@@ -168,6 +170,100 @@ BOOST_AUTO_TEST_CASE(testBootstrapWithJuneteenth) {
                     << "\n error:           " << error
                     << "\n tolerance:       " << tolerance);
     }
+}
+
+
+BOOST_AUTO_TEST_CASE(testCompoundedRateWithHolidayMaturity) {
+    BOOST_TEST_MESSAGE(
+        "Testing compounded SOFR futures when maturity is a holiday...");
+
+    Date today(18, June, 2024);
+    Settings::instance().evaluationDate() = today;
+
+    Handle<YieldTermStructure> curve(
+        ext::make_shared<FlatForward>(today, 0.0, Actual360()));
+    auto sofr = ext::make_shared<Sofr>(curve);
+
+    Rate previousFixing = 0.03;
+    Rate todaysFixing = 0.09;
+    sofr->addFixing(Date(17, June, 2024), previousFixing);
+    sofr->addFixing(today, todaysFixing);
+
+    Date valueDate(17, June, 2024);
+    Date maturityDate(19, June, 2024); // Juneteenth
+    OvernightIndexFuture future(sofr, valueDate, maturityDate);
+
+    DayCounter dc = sofr->dayCounter();
+    Real compoundFactor =
+        (1.0 + previousFixing * dc.yearFraction(valueDate, today)) *
+        (1.0 + todaysFixing * dc.yearFraction(today, maturityDate));
+    Rate expectedRate =
+        (compoundFactor - 1.0) / dc.yearFraction(valueDate, maturityDate);
+    Real expectedPrice = 100.0 * (1.0 - expectedRate);
+
+    QL_CHECK_SMALL(future.NPV() - expectedPrice, 1.0e-12);
+}
+
+BOOST_AUTO_TEST_CASE(testPillarDates) {
+    BOOST_TEST_MESSAGE("Testing pillar date support in SOFR futures helpers...");
+
+    Date today(15, March, 2024);
+    Settings::instance().evaluationDate() = today;
+
+    Handle<Quote> price(ext::make_shared<SimpleQuote>(99.0));
+    auto index = ext::make_shared<Sofr>();
+
+    Date valueDate(20, March, 2024);
+    Date maturityDate(20, June, 2024);
+
+    // Default pillar (LastRelevantDate)
+    OvernightIndexFutureRateHelper h1(price, valueDate, maturityDate, index);
+    BOOST_CHECK_EQUAL(h1.pillarDate(), maturityDate);
+
+    // maturity pillar
+    OvernightIndexFutureRateHelper h2(
+        price, valueDate, maturityDate, index,
+        {}, RateAveraging::Compound, Pillar::MaturityDate);
+    BOOST_CHECK_EQUAL(h2.pillarDate(), maturityDate);
+
+    // Custom pillar
+    Date custom(20, April, 2024);
+    OvernightIndexFutureRateHelper h3(
+        price, valueDate, maturityDate, index,
+        {}, RateAveraging::Compound, Pillar::CustomDate, custom);
+    BOOST_CHECK_EQUAL(h3.pillarDate(), custom);
+    
+    // Invalid custom pillar (after maturity)
+    Date badCustom(20, July, 2024);
+    BOOST_CHECK_EXCEPTION(
+        OvernightIndexFutureRateHelper(
+            price, valueDate, maturityDate, index,
+            {}, RateAveraging::Compound, Pillar::CustomDate, badCustom),
+        Error,
+        ExpectedErrorMessage("after end of reference period"));
+
+    // SOFR helper custom pillar
+    Date sofrCustom(15, July, 2024);
+    SofrFutureRateHelper sh(
+        price, June, 2024, Quarterly, {},
+        Pillar::CustomDate, sofrCustom);
+    BOOST_CHECK_EQUAL(sh.pillarDate(), sofrCustom);
+}
+
+BOOST_AUTO_TEST_CASE(testOvernightIndexFutureRateHelperNotification) {
+    BOOST_TEST_MESSAGE(
+        "Testing OvernightIndexRateFutureHelper is not notified via curve build");
+    Date today(26, October, 2018);
+    Settings::instance().evaluationDate() = today;
+    auto futHelper = ext::make_shared<OvernightIndexFutureRateHelper>(
+        Handle<Quote>(ext::make_shared<SimpleQuote>(97.52)),
+        Date(20, March, 2019), Date(19, June, 2019), ext::make_shared<Sofr>());
+    auto curve = ext::make_shared<PiecewiseYieldCurve<Discount, LogLinear> >(
+        today, std::vector<ext::shared_ptr<RateHelper> >{futHelper}, Actual360());
+    Flag f;
+    f.registerWith(futHelper);
+    curve->nodes();  // force evaluation
+    BOOST_ASSERT(!f.isUp());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

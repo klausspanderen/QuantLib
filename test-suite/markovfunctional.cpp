@@ -17,7 +17,6 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "preconditions.hpp"
 #include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/cashflows/cashflowvectors.hpp>
@@ -889,7 +888,7 @@ BOOST_AUTO_TEST_CASE(testSmileSectionUtilsWShapedSmile) {
                     << idx.first << ", right index " << idx.second);
 }
 
-BOOST_AUTO_TEST_CASE(testCalibrationOneInstrumentSet, *precondition(if_speed(Slow))) {
+BOOST_AUTO_TEST_CASE(testCalibrationOneInstrumentSet) {
 
     const Real tol0 = 0.0001; //  1bp tolerance for model zero rates vs. market
                               // zero rates (note that model zero rates are
@@ -1117,7 +1116,7 @@ BOOST_AUTO_TEST_CASE(testCalibrationOneInstrumentSet, *precondition(if_speed(Slo
     }
 }
 
-BOOST_AUTO_TEST_CASE(testVanillaEngines, *precondition(if_speed(Slow))) {
+BOOST_AUTO_TEST_CASE(testVanillaEngines) {
 
     const Real tol1 = 0.0001; // 1bp tolerance for model engine call put premia
                               // vs. black premia
@@ -1174,14 +1173,14 @@ BOOST_AUTO_TEST_CASE(testVanillaEngines, *precondition(if_speed(Slow))) {
     for (Size i = 0; i < outputs1.expiries_.size(); i++) {
         for (Size j = 0; j < outputs1.smileStrikes_[0].size(); j++) {
             ext::shared_ptr<VanillaSwap> underlyingCall =
-                MakeVanillaSwap(outputs1.tenors_[i], iborIndex1,
-                                outputs1.smileStrikes_[i][j])
+                MakeVanillaSwap(outputs1.tenors_[i], iborIndex1)
+                    .withFixedRate(outputs1.smileStrikes_[i][j])
                     .withEffectiveDate(
                          TARGET().advance(outputs1.expiries_[i], 2, Days))
                     .receiveFixed(false);
             ext::shared_ptr<VanillaSwap> underlyingPut =
-                MakeVanillaSwap(outputs1.tenors_[i], iborIndex1,
-                                outputs1.smileStrikes_[i][j])
+                MakeVanillaSwap(outputs1.tenors_[i], iborIndex1)
+                    .withFixedRate(outputs1.smileStrikes_[i][j])
                     .withEffectiveDate(
                          TARGET().advance(outputs1.expiries_[i], 2, Days))
                     .receiveFixed(true);
@@ -1235,20 +1234,20 @@ BOOST_AUTO_TEST_CASE(testVanillaEngines, *precondition(if_speed(Slow))) {
     ext::shared_ptr<Gaussian1dCapFloorEngine> mfCapFloorEngine2(
         new Gaussian1dCapFloorEngine(mf2, 64, 7.0));
     std::vector<CapFloor> c2 = {
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2, 0.01),
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2, 0.02),
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2, 0.03),
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2, 0.04),
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2, 0.05),
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2, 0.07),
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2, 0.10),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2, 0.01),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2, 0.02),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2, 0.03),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2, 0.04),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2, 0.05),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2, 0.07),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2, 0.10)
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2).withStrike(0.01),
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2).withStrike(0.02),
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2).withStrike(0.03),
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2).withStrike(0.04),
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2).withStrike(0.05),
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2).withStrike(0.07),
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex2).withStrike(0.10),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2).withStrike(0.01),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2).withStrike(0.02),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2).withStrike(0.03),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2).withStrike(0.04),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2).withStrike(0.05),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2).withStrike(0.07),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex2).withStrike(0.10)
     };
 
     for (auto& i : c2) {
@@ -1291,14 +1290,14 @@ BOOST_AUTO_TEST_CASE(testVanillaEngines, *precondition(if_speed(Slow))) {
     for (Size i = 0; i < outputs3.expiries_.size(); i++) {
         for (Size j = 0; j < outputs3.smileStrikes_[0].size(); j++) {
             ext::shared_ptr<VanillaSwap> underlyingCall =
-                MakeVanillaSwap(outputs3.tenors_[i], iborIndex3,
-                                outputs3.smileStrikes_[i][j])
+                MakeVanillaSwap(outputs3.tenors_[i], iborIndex3)
+                    .withFixedRate(outputs3.smileStrikes_[i][j])
                     .withEffectiveDate(
                          TARGET().advance(outputs3.expiries_[i], 2, Days))
                     .receiveFixed(false);
             ext::shared_ptr<VanillaSwap> underlyingPut =
-                MakeVanillaSwap(outputs3.tenors_[i], iborIndex3,
-                                outputs3.smileStrikes_[i][j])
+                MakeVanillaSwap(outputs3.tenors_[i], iborIndex3)
+                    .withFixedRate(outputs3.smileStrikes_[i][j])
                     .withEffectiveDate(
                          TARGET().advance(outputs3.expiries_[i], 2, Days))
                     .receiveFixed(true);
@@ -1367,22 +1366,22 @@ BOOST_AUTO_TEST_CASE(testVanillaEngines, *precondition(if_speed(Slow))) {
         new Gaussian1dCapFloorEngine(mf4, 64, 7.0));
 
     std::vector<CapFloor> c4 = {
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4, 0.01),
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4, 0.02),
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4, 0.03),
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4, 0.04),
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4, 0.05),
-        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4, 0.06),
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4).withStrike(0.01),
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4).withStrike(0.02),
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4).withStrike(0.03),
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4).withStrike(0.04),
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4).withStrike(0.05),
+        MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4).withStrike(0.06),
         // //exclude because caplet stripper fails for this strike
-        // MakeCapFloor(CapFloor::Cap,5*Years,iborIndex4,0.10),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4, 0.01),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4, 0.02),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4, 0.03),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4, 0.04),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4, 0.05),
-        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4, 0.06)
+        // MakeCapFloor(CapFloor::Cap, 5 * Years, iborIndex4).withStrike(0.10),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4).withStrike(0.01),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4).withStrike(0.02),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4).withStrike(0.03),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4).withStrike(0.04),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4).withStrike(0.05),
+        MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4).withStrike(0.06)
         // //exclude because caplet stripper fails for this strike
-        // MakeCapFloor(CapFloor::Floor,5*Years,iborIndex4,0.10)
+        // MakeCapFloor(CapFloor::Floor, 5 * Years, iborIndex4).withStrike(0.10)
     };
 
     for (auto& i : c4) {
@@ -1398,7 +1397,7 @@ BOOST_AUTO_TEST_CASE(testVanillaEngines, *precondition(if_speed(Slow))) {
     }
 }
 
-BOOST_AUTO_TEST_CASE(testCalibrationTwoInstrumentSets, *precondition(if_speed(Fast))) {
+BOOST_AUTO_TEST_CASE(testCalibrationTwoInstrumentSets) {
 
     const Real tol1 = 0.1; // 0.1 times vega tolerance for model vs. market in
                            // second instrument set
@@ -1678,7 +1677,8 @@ BOOST_AUTO_TEST_CASE(testBermudanSwaption) {
         new Gaussian1dSwaptionEngine(mf1, 64, 7.0));
 
     ext::shared_ptr<VanillaSwap> underlyingCall =
-        MakeVanillaSwap(10 * Years, iborIndex1, 0.03)
+        MakeVanillaSwap(10 * Years, iborIndex1)
+            .withFixedRate(0.03)
             .withEffectiveDate(TARGET().advance(referenceDate, 2, Days))
         //.withNominal(100000000.0)
             .receiveFixed(false);

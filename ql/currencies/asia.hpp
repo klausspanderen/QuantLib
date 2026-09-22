@@ -30,11 +30,6 @@
 
 #include <ql/currency.hpp>
 
-#if defined(QL_PATCH_MSVC)
-#pragma warning(push)
-#pragma warning(disable:4819)
-#endif
-
 namespace QuantLib {
 
     //! Bangladesh taka
@@ -331,10 +326,16 @@ namespace QuantLib {
         LKRCurrency();
     };
 
-}
+    //! Uzbekistani Som
+    /*! The ISO three-letter code is UZS; the numeric code is 860.
+     It is divided into 100 tiyin.
+     \ingroup currencies
+    */
+    class UZSCurrency : public Currency {
+      public:
+        UZSCurrency();
+    };
 
-#if defined(QL_PATCH_MSVC)
-#pragma warning(pop)
-#endif
+}
 
 #endif

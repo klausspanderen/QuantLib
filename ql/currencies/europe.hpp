@@ -30,11 +30,6 @@
 
 #include <ql/currency.hpp>
 
-#if defined(QL_PATCH_MSVC)
-#pragma warning(push)
-#pragma warning(disable:4819)
-#endif
-
 namespace QuantLib {
 
     //! Bulgarian lev
@@ -189,6 +184,17 @@ namespace QuantLib {
     class LVLCurrency : public Currency {
       public:
         LVLCurrency();
+    };
+
+    //! Macedonian denar
+    /*! The ISO three-letter code is MKD; the numeric code is 807.
+        It is divided in 100 deni.
+
+        \ingroup currencies
+    */
+    class MKDCurrency : public Currency {
+      public:
+        MKDCurrency();
     };
 
     //! Norwegian krone
@@ -528,9 +534,5 @@ namespace QuantLib {
     };
 
 }
-
-#if defined(QL_PATCH_MSVC)
-#pragma warning(pop)
-#endif
 
 #endif

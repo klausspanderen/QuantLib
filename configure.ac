@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT([QuantLib], [1.42-dev],
+AC_INIT([QuantLib], [1.44-dev],
         [quantlib-dev@lists.sourceforge.net],
         [QuantLib])
 AC_PREREQ(2.62)
@@ -272,36 +272,6 @@ if test "$ql_faster_lazy_objects" = "yes" ; then
 fi
 AC_MSG_RESULT([$ql_faster_lazy_objects])
 
-AC_MSG_CHECKING([whether to enable std::any instead of boost::any])
-AC_ARG_ENABLE([std-any],
-              AS_HELP_STRING([--enable-std-any],
-                             [If enabled (the default), std::any and related
-                              classes and functions will be used instead of
-                              boost::any. If disabled, the Boost facilities
-                              will be used.]),
-              [ql_use_std_any=$enableval],
-              [ql_use_std_any=yes])
-if test "$ql_use_std_any" = "yes" ; then
-   AC_DEFINE([QL_USE_STD_ANY],[1],
-             [Define this if you want to use std::any.])
-fi
-AC_MSG_RESULT([$ql_use_std_any])
-
-AC_MSG_CHECKING([whether to enable std::optional instead of boost::optional])
-AC_ARG_ENABLE([std-optional],
-              AS_HELP_STRING([--enable-std-optional],
-                             [If enabled (the default), std::optional and
-                              related classes and functions will be used
-                              instead of boost::optional. If disabled,
-                              the Boost facilities will be used.]),
-              [ql_use_std_optional=$enableval],
-              [ql_use_std_optional=yes])
-if test "$ql_use_std_optional" = "yes" ; then
-   AC_DEFINE([QL_USE_STD_OPTIONAL],[1],
-             [Define this if you want to use std::optional.])
-fi
-AC_MSG_RESULT([$ql_use_std_optional])
-
 AC_MSG_CHECKING([whether to enable standard smart pointers])
 AC_ARG_ENABLE([std-pointers],
               AS_HELP_STRING([--enable-std-pointers],
@@ -311,7 +281,8 @@ AC_ARG_ENABLE([std-pointers],
                               If disabled (the default) the Boost facilities
                               will be used.
                               Note that std::shared_ptr does not check
-                              access and can cause segmentation faults.]),
+                              access and will cause a segmentation fault
+                              if you access a null pointer.]),
               [ql_use_std_pointers=$enableval],
               [ql_use_std_pointers=no])
 if test "$ql_use_std_pointers" = "yes" ; then
@@ -323,17 +294,12 @@ AC_MSG_RESULT([$ql_use_std_pointers])
 AC_MSG_CHECKING([whether to enable available std classes])
 AC_ARG_ENABLE([std-classes],
               AS_HELP_STRING([--enable-std-classes],
-                             [This is a shortcut for --enable-std-pointers
-                              --enable-std-function --enable-std-tuple.
+                             [This is a shortcut for --enable-std-pointers.
                               If enabled, this supersedes any --disable
                               option passed for the above.]),
               [ql_use_std_classes=$enableval],
               [ql_use_std_classes=no])
 if test "$ql_use_std_classes" = "yes" ; then
-   AC_DEFINE([QL_USE_STD_ANY],[1],
-             [Define this if you want to use std::any.])
-   AC_DEFINE([QL_USE_STD_OPTIONAL],[1],
-             [Define this if you want to use std::optional.])
    AC_DEFINE([QL_USE_STD_SHARED_PTR],[1],
              [Define this if you want to use standard smart pointers.])
 fi

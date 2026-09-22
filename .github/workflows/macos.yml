@@ -12,14 +12,14 @@ jobs:
       matrix:
         os: [macos-14, macos-15]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup
       env:
         HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
       run: |
         brew install automake autoconf libtool boost ccache
     - name: Cache
-      uses: hendrikmuhs/ccache-action@v1.2
+      uses: hendrikmuhs/ccache-action@v1.2.24
       with:
         key: macos-ci-build-${{ matrix.os }}-${{ github.ref }}
         restore-keys: |

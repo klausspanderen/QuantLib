@@ -73,7 +73,8 @@ namespace QuantLib {
                                            Size maxSamples,
                                            BigNatural seed,
                                            Size timeSteps = Null<Size>(),
-                                           Size timeStepsPerYear = Null<Size>());
+                                           Size timeStepsPerYear = Null<Size>(),
+                                           bool includeExerciseDate = false);
         void calculate() const override {
             try {
                 McSimulation<MC,RNG,S>::calculate(requiredTolerance_,
@@ -112,9 +113,8 @@ namespace QuantLib {
             TimeGrid grid = this->timeGrid();
             typename RNG::rsg_type gen =
                 RNG::make_sequence_generator(dimensions*(grid.size()-1),seed_);
-            return ext::shared_ptr<path_generator_type>(
-                         new path_generator_type(process_, grid,
-                                                 gen, brownianBridge_));
+            return ext::make_shared<path_generator_type>(process_, grid,
+                                                 gen, brownianBridge_);
         }
         Real controlVariateValue() const override;
         // data members
@@ -123,6 +123,7 @@ namespace QuantLib {
         Real requiredTolerance_;
         bool brownianBridge_;
         BigNatural seed_;
+        bool includeExerciseDate_ = false;
     };
 
 
@@ -139,11 +140,12 @@ namespace QuantLib {
         Size maxSamples,
         BigNatural seed,
         Size timeSteps,
-        Size timeStepsPerYear)
+        Size timeStepsPerYear,
+        bool includeExerciseDate)
     : McSimulation<MC, RNG, S>(antitheticVariate, controlVariate), process_(std::move(process)),
       requiredSamples_(requiredSamples), maxSamples_(maxSamples), timeSteps_(timeSteps),
       timeStepsPerYear_(timeStepsPerYear), requiredTolerance_(requiredTolerance),
-      brownianBridge_(brownianBridge), seed_(seed) {
+      brownianBridge_(brownianBridge), seed_(seed), includeExerciseDate_(includeExerciseDate) {
         registerWith(process_);
     }
 
@@ -167,6 +169,9 @@ namespace QuantLib {
         // the time grid to improve the accuracy of the discretization
         Date lastExerciseDate = this->arguments_.exercise->lastDate();
         Time t = process_->time(lastExerciseDate);
+
+        if (includeExerciseDate_ && t > fixingTimes.back())
+            fixingTimes.push_back(t);
 
         if (this->timeSteps_ != Null<Size>()) {
             return TimeGrid(fixingTimes.begin(), fixingTimes.end(), timeSteps_);

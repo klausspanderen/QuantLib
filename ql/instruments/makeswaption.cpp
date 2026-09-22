@@ -44,7 +44,8 @@ namespace QuantLib {
                                Rate strike)
     : swapIndex_(std::move(swapIndex)), delivery_(Settlement::Physical),
       settlementMethod_(Settlement::PhysicalOTC), optionConvention_(ModifiedFollowing),
-      fixingDate_(fixingDate), strike_(strike), underlyingType_(Swap::Payer) {}
+      fixingDate_(fixingDate), strike_(strike), underlyingType_(Swap::Payer),
+      nominal_(1.0) {}
 
     MakeSwaption::operator Swaption() const {
         ext::shared_ptr<Swaption> swaption = *this;
@@ -53,14 +54,16 @@ namespace QuantLib {
 
     MakeSwaption::operator ext::shared_ptr<Swaption>() const {
 
-        const Calendar& fixingCalendar = swapIndex_->fixingCalendar();
+        const Calendar& calendar = exerciseCalendar_.empty()
+            ? swapIndex_->fixingCalendar()
+            : exerciseCalendar_;
         Date refDate = Settings::instance().evaluationDate();
         // if the evaluation date is not a business day
         // then move to the next business day
-        refDate = fixingCalendar.adjust(refDate);
+        refDate = calendar.adjust(refDate);
         if (fixingDate_ == Date())
-            fixingDate_ = fixingCalendar.advance(refDate, optionTenor_,
-                                                 optionConvention_);
+            fixingDate_ = calendar.advance(refDate, optionTenor_,
+                                           optionConvention_);
         if (exerciseDate_ == Date()) {
             exercise_ = ext::shared_ptr<Exercise>(new
                 EuropeanExercise(fixingDate_));
@@ -111,7 +114,8 @@ namespace QuantLib {
             underlyingSwap_ =
                 (ext::shared_ptr<OvernightIndexedSwap>)(
                     MakeOIS(swapIndex_->tenor(),
-                            OIswap_index->overnightIndex(), usedStrike)
+                            OIswap_index->overnightIndex())
+                    .withFixedRate(usedStrike)
                     .withEffectiveDate(swapIndex_->valueDate(fixingDate_))
                     .withPaymentCalendar(swapIndex_->fixingCalendar())
                     .withFixedLegDayCount(swapIndex_->dayCounter())
@@ -125,7 +129,8 @@ namespace QuantLib {
             underlyingSwap_ =
                 (ext::shared_ptr<VanillaSwap>)(
                     MakeVanillaSwap(swapIndex_->tenor(),
-                                    swapIndex_->iborIndex(), usedStrike)
+                                    swapIndex_->iborIndex())
+                    .withFixedRate(usedStrike)
                     .withEffectiveDate(swapIndex_->valueDate(fixingDate_))
                     .withFixedLegCalendar(swapIndex_->fixingCalendar())
                     .withFixedLegDayCount(swapIndex_->dayCounter())
@@ -165,6 +170,11 @@ namespace QuantLib {
         return *this;
     }
 
+    MakeSwaption& MakeSwaption::withExerciseCalendar(const Calendar& cal) {
+        exerciseCalendar_ = cal;
+        return *this;
+    }
+
     MakeSwaption& MakeSwaption::withUnderlyingType(const Swap::Type type) {
         underlyingType_ = type;
         return *this;
@@ -181,7 +191,7 @@ namespace QuantLib {
         return *this;
     }
 
-    MakeSwaption& MakeSwaption::withIndexedCoupons(const ext::optional<bool>& b) {
+    MakeSwaption& MakeSwaption::withIndexedCoupons(const std::optional<bool>& b) {
         useIndexedCoupons_ = b;
         return *this;
     }

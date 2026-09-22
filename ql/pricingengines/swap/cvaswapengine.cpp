@@ -122,8 +122,6 @@ namespace QuantLib {
 
     Real cumOptVal = 0., 
         cumPutVal = 0.;
-    // Vanilla swap so 0 leg is floater
-
     auto nextFD = 
       arguments_.fixedPayDates.begin();
     Date swapletStart = priceDate;
@@ -168,9 +166,8 @@ namespace QuantLib {
 	    - swapletStart.serialNumber(), Days);
       ext::shared_ptr<VanillaSwap> swaplet = MakeVanillaSwap(
         baseSwapsTenor,
-        swapIndex, 
-        baseSwapFairRate // strike
-        )
+        swapIndex)
+        .withFixedRate(baseSwapFairRate)
 	    .withType(arguments_.type)
 	    .withNominal(arguments_.nominal)
           ////////	    .withSettlementDays(2)
@@ -178,9 +175,8 @@ namespace QuantLib {
         .withTerminationDate(arguments_.fixedPayDates.back());
       ext::shared_ptr<VanillaSwap> revSwaplet = MakeVanillaSwap(
         baseSwapsTenor,
-        swapIndex, 
-        baseSwapFairRate // strike
-        )
+        swapIndex)
+        .withFixedRate(baseSwapFairRate)
 	    .withType(reversedType)
 	    .withNominal(arguments_.nominal)
           /////////	    .withSettlementDays(2)

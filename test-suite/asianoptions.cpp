@@ -22,7 +22,6 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "preconditions.hpp"
 #include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/experimental/asian/analytic_cont_geom_av_price_heston.hpp>
@@ -635,7 +634,7 @@ void testDiscreteGeometricAveragePriceHeston(const ext::shared_ptr<PricingEngine
     }
 }
 
-BOOST_AUTO_TEST_CASE(testMCDiscreteGeometricAveragePriceHeston, *precondition(if_speed(Fast))) {
+BOOST_AUTO_TEST_CASE(testMCDiscreteGeometricAveragePriceHeston) {
 
     BOOST_TEST_MESSAGE("Testing MC discrete geometric average-price Asians under Heston...");
 
@@ -674,7 +673,7 @@ BOOST_AUTO_TEST_CASE(testMCDiscreteGeometricAveragePriceHeston, *precondition(if
     testDiscreteGeometricAveragePriceHeston(engine, tol);
 }
 
-BOOST_AUTO_TEST_CASE(testMCDiscreteArithmeticAveragePrice, *precondition(if_speed(Fast))) {
+BOOST_AUTO_TEST_CASE(testMCDiscreteArithmeticAveragePrice) {
 
     BOOST_TEST_MESSAGE(
            "Testing Monte Carlo discrete arithmetic average-price Asians...");
@@ -855,7 +854,7 @@ BOOST_AUTO_TEST_CASE(testMCDiscreteArithmeticAveragePrice, *precondition(if_spee
     }
 }
 
-BOOST_AUTO_TEST_CASE(testMCDiscreteArithmeticAveragePriceHeston, *precondition(if_speed(Slow))) {
+BOOST_AUTO_TEST_CASE(testMCDiscreteArithmeticAveragePriceHeston) {
 
     BOOST_TEST_MESSAGE(
            "Testing Monte Carlo discrete arithmetic average-price Asians in Heston model...");
@@ -1178,6 +1177,70 @@ BOOST_AUTO_TEST_CASE(testMCDiscreteArithmeticAverageStrike) {
                            vol->value(), expected, calculated, tolerance);
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(testMCDiscreteArithmeticAverageStrikeExerciseDate) {
+
+    BOOST_TEST_MESSAGE(
+          "Testing that MC arithmetic average-strike Asian is sensitive to exercise date...");
+
+    // Issue #646: the engine was insensitive to exercise date because
+    // timeGrid() did not include it.
+
+    Date today = Date::todaysDate();
+    DayCounter dc = Actual360();
+
+    auto spot = ext::make_shared<SimpleQuote>(90.0);
+    auto qRate = ext::make_shared<SimpleQuote>(0.0);
+    auto rRate = ext::make_shared<SimpleQuote>(0.0);
+    auto vol = ext::make_shared<SimpleQuote>(0.20);
+
+    ext::shared_ptr<YieldTermStructure> qTS = flatRate(today, qRate, dc);
+    ext::shared_ptr<YieldTermStructure> rTS = flatRate(today, rRate, dc);
+    ext::shared_ptr<BlackVolTermStructure> volTS = flatVol(today, vol, dc);
+
+    auto stochProcess = ext::make_shared<BlackScholesMertonProcess>(
+        Handle<Quote>(spot),
+        Handle<YieldTermStructure>(qTS),
+        Handle<YieldTermStructure>(rTS),
+        Handle<BlackVolTermStructure>(volTS));
+
+    auto payoff = ext::make_shared<PlainVanillaPayoff>(Option::Call, 90.0);
+    Average::Type averageType = Average::Arithmetic;
+    Real runningSum = 0.0;
+    Size pastFixings = 0;
+
+    // monthly fixings for 6 months
+    std::vector<Date> fixingDates;
+    for (Size i = 0; i <= 6; i++)
+        fixingDates.push_back(today + Period(i, Months));
+
+    // price with exercise at last fixing
+    auto exercise1 = ext::make_shared<EuropeanExercise>(fixingDates.back());
+    DiscreteAveragingAsianOption option1(
+        averageType, runningSum, pastFixings, fixingDates, payoff, exercise1);
+    option1.setPricingEngine(
+        MakeMCDiscreteArithmeticASEngine<LowDiscrepancy>(stochProcess)
+        .withSeed(42).withSamples(8191));
+    Real price1 = option1.NPV();
+
+    // price with exercise 3 months after last fixing
+    auto exercise2 = ext::make_shared<EuropeanExercise>(
+        fixingDates.back() + Period(3, Months));
+    DiscreteAveragingAsianOption option2(
+        averageType, runningSum, pastFixings, fixingDates, payoff, exercise2);
+    option2.setPricingEngine(
+        MakeMCDiscreteArithmeticASEngine<LowDiscrepancy>(stochProcess)
+        .withSeed(42).withSamples(8191));
+    Real price2 = option2.NPV();
+
+    // with r=q=0 and vol>0, a later exercise date must give a higher price
+    if (price2 <= price1)
+        BOOST_FAIL("average-strike Asian option should be sensitive to "
+                   "exercise date: price with exercise at last fixing = "
+                   << std::setprecision(16) << std::scientific << price1
+                   << ", price with exercise 3 months later = " << price2);
+
 }
 
 BOOST_AUTO_TEST_CASE(testAnalyticDiscreteGeometricAveragePriceGreeks) {

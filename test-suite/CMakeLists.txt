@@ -39,8 +39,13 @@ set(QL_TEST_SOURCES
     compiledboostversion.cpp
     compoundoption.cpp
     convertiblebonds.cpp
+    copulas.cpp
     covariance.cpp
     creditdefaultswap.cpp
+    constnotionalcrosscurrencybasisswap.cpp
+    constnotionalcrosscurrencyfixedvsfloatingswap.cpp
+    mtmcrosscurrencybasisswap.cpp
+    constnotionalcrosscurrencyswap.cpp
     crosscurrencyratehelpers.cpp
     currency.cpp
     curvestates.cpp
@@ -58,6 +63,7 @@ set(QL_TEST_SOURCES
     equitytotalreturnswap.cpp
     europeanoption.cpp
     everestoption.cpp
+    extendedblackvariancesurface.cpp
     exchangerate.cpp
     extendedtrees.cpp
     extensibleoptions.cpp
@@ -68,10 +74,12 @@ set(QL_TEST_SOURCES
     fdmlinearop.cpp
     fdsabr.cpp
     fittedbonddiscountcurve.cpp
+    floatfloatswap.cpp
     forwardoption.cpp
     forwardrateagreement.cpp
     functions.cpp
     fxforward.cpp
+    g2process.cpp
     garch.cpp
     gaussianquadratures.cpp
     gjrgarchmodel.cpp
@@ -125,6 +133,7 @@ set(QL_TEST_SOURCES
     optimizers.cpp
     optionletstripper.cpp
     overnightindexedcoupon.cpp
+    overnightindexedfundingratehelper.cpp
     overnightindexedswap.cpp
     pagodaoption.cpp
     partialtimebarrieroption.cpp
@@ -143,6 +152,7 @@ set(QL_TEST_SOURCES
     riskneutraldensitycalculator.cpp
     riskstats.cpp
     rngtraits.cpp
+    roughhestonmodel.cpp
     rounding.cpp
     schedule.cpp
     settings.cpp
@@ -164,6 +174,7 @@ set(QL_TEST_SOURCES
     timeseries.cpp
     tqreigendecomposition.cpp
     tracing.cpp
+    trinomialtree.cpp
     twoassetbarrieroption.cpp
     twoassetcorrelationoption.cpp
     ultimateforwardtermstructure.cpp

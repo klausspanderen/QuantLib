@@ -97,6 +97,15 @@ namespace QuantLib {
             adjustedCallabilityPrices_[i] *= arguments_.faceAmount / 100.0;
             callabilityTimes_[i] = callabilityTime;
         }
+
+        // not snapped itself, but a snapped neighbour may have moved this coupon ahead
+        for (Size i = 0; i < callabilityTimes_.size(); ++i) {
+            for (Size j = 0; j < couponTimes_.size(); ++j) {
+                if (couponAdjustments_[j] == CouponAdjustment::pre &&
+                    args.callabilityDates[i] == args.couponDates[j])
+                    adjustedCallabilityPrices_[i] += args.couponAmounts[j];
+            }
+        }
     }
 
 

@@ -39,10 +39,13 @@ namespace QuantLib {
     struct CPI {
 
         //! when you observe an index, how do you interpolate between fixings?
+        /*! AsIndex was used to facilitate migration from the index to
+            the coupons using it.  Deprecated in version 1.43.
+        */
         enum InterpolationType {
-            AsIndex, //!< same interpolation as index
-            Flat,    //!< flat from previous fixing
-            Linear   //!< linearly between bracketing fixings
+            AsIndex [[deprecated("Use either Linear or Flat")]] = 0, //!< same interpolation as index.  \deprecated Use either Linear or Flat. Deprecated in version 1.43.
+            Flat = 1,    //!< flat from previous fixing
+            Linear = 2   //!< linearly between bracketing fixings
         };
 
         //! interpolated inflation fixing
@@ -172,7 +175,7 @@ namespace QuantLib {
         //! \name Other methods
         //@{
         Date lastFixingDate() const;
-        Handle<ZeroInflationTermStructure> zeroInflationTermStructure() const;
+        const Handle<ZeroInflationTermStructure>& zeroInflationTermStructure() const;
         ext::shared_ptr<ZeroInflationIndex> clone(const Handle<ZeroInflationTermStructure>& h) const;
         bool needsForecast(const Date& fixingDate) const;
         //@}
@@ -199,15 +202,6 @@ namespace QuantLib {
             const ext::shared_ptr<ZeroInflationIndex>& underlyingIndex,
             Handle<YoYInflationTermStructure> ts = {});
 
-        /*! \deprecated Use the similar overload without the interpolated parameter.
-                        Deprecated in version 1.38.
-        */
-        [[deprecated("Use the similar overload without the interpolated parameter")]]
-        YoYInflationIndex(
-            const ext::shared_ptr<ZeroInflationIndex>& underlyingIndex,
-            bool interpolated,
-            Handle<YoYInflationTermStructure> ts = {});
-
         //! Constructor for quoted year-on-year indices.
         /*! An index built with this constructor needs its past
             fixings (i.e., the past year-on-year values) to be stored
@@ -222,20 +216,9 @@ namespace QuantLib {
             const Currency& currency,
             Handle<YoYInflationTermStructure> ts = {});
 
-        /*! \deprecated Use the similar overload without the interpolated parameter.
-                        Deprecated in version 1.38.
-        */
-        [[deprecated("Use the similar overload without the interpolated parameter")]]
-        YoYInflationIndex(
-            const std::string& familyName,
-            const Region& region,
-            bool revised,
-            bool interpolated,
-            Frequency frequency,
-            const Period& availabilityLag,
-            const Currency& currency,
-            Handle<YoYInflationTermStructure> ts = {});
-        //@}
+        QL_DEPRECATED_DISABLE_WARNING
+        ~YoYInflationIndex() override = default;
+        QL_DEPRECATED_ENABLE_WARNING
 
         //! \name Index interface
         //@{
@@ -249,17 +232,25 @@ namespace QuantLib {
         //! \name Other methods
         //@{
         Date lastFixingDate() const;
+        /*! \deprecated Indexes no longer interpolate, coupons do.
+                        Deprecated in version 1.43.
+        */
+        [[deprecated("Indexes no longer interpolate, coupons do")]]
         bool interpolated() const;
         bool ratio() const;
         ext::shared_ptr<ZeroInflationIndex> underlyingIndex() const;
-        Handle<YoYInflationTermStructure> yoyInflationTermStructure() const;
+        const Handle<YoYInflationTermStructure>& yoyInflationTermStructure() const;
 
         ext::shared_ptr<YoYInflationIndex> clone(const Handle<YoYInflationTermStructure>& h) const;
         bool needsForecast(const Date& fixingDate) const;
         //@}
 
       protected:
-        bool interpolated_;
+        /*! \deprecated Indexes no longer interpolate, coupons do.
+                        Deprecated in version 1.43.
+        */
+        [[deprecated("Indexes no longer interpolate, coupons do")]]
+        bool interpolated_ = false;
 
       private:
         Rate forecastFixing(const Date& fixingDate) const;
@@ -320,14 +311,16 @@ namespace QuantLib {
         return currency_;
     }
 
-    inline Handle<ZeroInflationTermStructure>
+    inline const Handle<ZeroInflationTermStructure>&
     ZeroInflationIndex::zeroInflationTermStructure() const {
         return zeroInflation_;
     }
 
+    QL_DEPRECATED_DISABLE_WARNING
     inline bool YoYInflationIndex::interpolated() const {
         return interpolated_;
     }
+    QL_DEPRECATED_ENABLE_WARNING
 
     inline bool YoYInflationIndex::ratio() const {
         return ratio_;
@@ -337,7 +330,7 @@ namespace QuantLib {
         return underlyingIndex_;
     }
 
-    inline Handle<YoYInflationTermStructure>
+    inline const Handle<YoYInflationTermStructure>&
     YoYInflationIndex::yoyInflationTermStructure() const {
         return yoyInflation_;
     }

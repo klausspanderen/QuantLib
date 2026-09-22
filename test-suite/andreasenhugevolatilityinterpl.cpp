@@ -17,7 +17,6 @@
  FOR A PARTICULAR PURPOSE.  See the license for more details.
 */
 
-#include "preconditions.hpp"
 #include "toplevelfixture.hpp"
 #include "utilities.hpp"
 #include <ql/instruments/barrieroption.hpp>
@@ -421,7 +420,7 @@ BOOST_AUTO_TEST_CASE(testAndreasenHugeCall) {
     testAndreasenHugeVolatilityInterpolation(data, expected);
 }
 
-BOOST_AUTO_TEST_CASE(testAndreasenHugeCallPut, *precondition(if_speed(Fast))) {
+BOOST_AUTO_TEST_CASE(testAndreasenHugeCallPut) {
 
     BOOST_TEST_MESSAGE(
         "Testing Andreasen-Huge example with instantaneous "
@@ -439,7 +438,7 @@ BOOST_AUTO_TEST_CASE(testAndreasenHugeCallPut, *precondition(if_speed(Fast))) {
     testAndreasenHugeVolatilityInterpolation(data, expected);
 }
 
-BOOST_AUTO_TEST_CASE(testLinearInterpolation, *precondition(if_speed(Fast))) {
+BOOST_AUTO_TEST_CASE(testLinearInterpolation) {
     BOOST_TEST_MESSAGE(
         "Testing Andreasen-Huge example with linear interpolation...");
 
@@ -455,7 +454,7 @@ BOOST_AUTO_TEST_CASE(testLinearInterpolation, *precondition(if_speed(Fast))) {
     testAndreasenHugeVolatilityInterpolation(data, expected);
 }
 
-BOOST_AUTO_TEST_CASE(testPiecewiseConstantInterpolation, *precondition(if_speed(Fast))) {
+BOOST_AUTO_TEST_CASE(testPiecewiseConstantInterpolation) {
     BOOST_TEST_MESSAGE(
         "Testing Andreasen-Huge example with piecewise constant interpolation...");
 
@@ -471,7 +470,7 @@ BOOST_AUTO_TEST_CASE(testPiecewiseConstantInterpolation, *precondition(if_speed(
     testAndreasenHugeVolatilityInterpolation(data, expected);
 }
 
-BOOST_AUTO_TEST_CASE(testTimeDependentInterestRates, *precondition(if_speed(Fast))) {
+BOOST_AUTO_TEST_CASE(testTimeDependentInterestRates) {
 
     BOOST_TEST_MESSAGE(
         "Testing Andreasen-Huge volatility interpolation with "
@@ -701,7 +700,7 @@ BOOST_AUTO_TEST_CASE(testArbitrageFree) {
     }
 }
 
-BOOST_AUTO_TEST_CASE(testBarrierOptionPricing, *precondition(if_speed(Fast))) {
+BOOST_AUTO_TEST_CASE(testBarrierOptionPricing) {
     BOOST_TEST_MESSAGE(
         "Testing Barrier option pricing with Andreasen-Huge "
          "local volatility surface...");
@@ -1013,6 +1012,49 @@ BOOST_AUTO_TEST_CASE(testFlatVolCalibration) {
     };
 
     testAndreasenHugeVolatilityInterpolation(flatVolData, expected);
+}
+
+BOOST_AUTO_TEST_CASE(testAndreasenHugeVolatilityAdapterAtmLevel) {
+    BOOST_TEST_MESSAGE("Testing atmLevel on AndreasenHugeVolatilityAdapter...");
+
+    const Date today(4, March, 2026);
+    Settings::instance().evaluationDate() = today;
+    const DayCounter dc = Actual365Fixed();
+
+    const Real s0 = 100.0;
+    const Rate r = 0.05, q = 0.02;
+
+    const Handle<Quote> spot(ext::make_shared<SimpleQuote>(s0));
+    const Handle<YieldTermStructure> rTS(flatRate(today, r, dc));
+    const Handle<YieldTermStructure> qTS(flatRate(today, q, dc));
+    const ext::shared_ptr<Quote> vol = ext::make_shared<SimpleQuote>(0.20);
+
+    AndreasenHugeVolatilityInterpl::CalibrationSet calibrationSet;
+    const auto exercise = ext::make_shared<EuropeanExercise>(today + 1 * Years);
+    for (Real strike : { 80.0, 100.0, 120.0 }) {
+        calibrationSet.emplace_back(
+            ext::make_shared<VanillaOption>(
+                ext::make_shared<PlainVanillaPayoff>(Option::Call, strike),
+                exercise),
+            vol);
+    }
+
+    const auto interpl = ext::make_shared<AndreasenHugeVolatilityInterpl>(
+        calibrationSet, spot, rTS, qTS);
+    const AndreasenHugeVolatilityAdapter surface(interpl);
+
+    const Real tol = 1e-12;
+    for (Time t : { 0.25, 0.5, 1.0 }) {
+        const Real expected = s0 * qTS->discount(t) / rTS->discount(t);
+        const Real calculated = surface.atmLevel(t);
+        if (std::fabs(calculated - expected) > tol)
+            BOOST_FAIL("AndreasenHugeVolatilityAdapter::atmLevel mismatch"
+                       << "\n   t:          " << t
+                       << "\n   calculated: " << calculated
+                       << "\n   expected:   " << expected
+                       << "\n   diff:       " << calculated - expected
+                       << "\n   tolerance:  " << tol);
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

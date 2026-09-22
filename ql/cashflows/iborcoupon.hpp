@@ -7,6 +7,7 @@
  Copyright (C) 2007 StatPro Italia srl
  Copyright (C) 2017 Joseph Jeisman
  Copyright (C) 2017 Fabrice Lecuyer
+ Copyright (C) 2026 Kyrylo Protsenko
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -57,7 +58,7 @@ namespace QuantLib {
         //! \name Inspectors
         //@{
         const ext::shared_ptr<IborIndex>& iborIndex() const { return iborIndex_; }
-        bool hasFixed() const;
+        virtual bool hasFixed() const;
         //@}
         //! \name FloatingRateCoupon interface
         //@{
@@ -132,6 +133,8 @@ namespace QuantLib {
         #endif
     };
 
+    class StubIndexSelection;
+
     //! helper class building a sequence of capped/floored ibor-rate coupons
     class IborLeg {
       public:
@@ -159,8 +162,11 @@ namespace QuantLib {
                                     BusinessDayConvention,
                                     bool endOfMonth = false);
         IborLeg& withFixingConvention(BusinessDayConvention);
-        IborLeg& withIndexedCoupons(ext::optional<bool> b = true);
+        IborLeg& withIndexedCoupons(std::optional<bool> b = true);
         IborLeg& withAtParCoupons(bool b = true);
+        //! sets index selection for uncapped schedule periods marked as irregular
+        /*! Requires indexed coupons; see StubIndexSelection. */
+        IborLeg& withStubIndexSelection(const StubIndexSelection&);
         operator Leg() const;
 
       private:
@@ -181,7 +187,8 @@ namespace QuantLib {
         Calendar exCouponCalendar_;
         BusinessDayConvention exCouponAdjustment_ = Unadjusted;
         bool exCouponEndOfMonth_ = false;
-        ext::optional<bool> useIndexedCoupons_;
+        std::optional<bool> useIndexedCoupons_;
+        ext::shared_ptr<StubIndexSelection> stubIndexSelection_;
     };
 
 }

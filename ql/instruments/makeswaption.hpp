@@ -60,8 +60,9 @@ namespace QuantLib {
         MakeSwaption& withSettlementMethod(Settlement::Method settlementMethod);
         MakeSwaption& withOptionConvention(BusinessDayConvention bdc);
         MakeSwaption& withExerciseDate(const Date&);
+        MakeSwaption& withExerciseCalendar(const Calendar&);
         MakeSwaption& withUnderlyingType(Swap::Type type);
-        MakeSwaption& withIndexedCoupons(const ext::optional<bool>& b = true);
+        MakeSwaption& withIndexedCoupons(const std::optional<bool>& b = true);
         MakeSwaption& withAtParCoupons(bool b = true);
 
         MakeSwaption& withPricingEngine(
@@ -76,12 +77,13 @@ namespace QuantLib {
         BusinessDayConvention optionConvention_;
         mutable Date fixingDate_;
         Date exerciseDate_;
+        Calendar exerciseCalendar_;
         mutable ext::shared_ptr<Exercise> exercise_;
 
         Rate strike_;
         Swap::Type underlyingType_;
         Real nominal_;
-        ext::optional<bool> useIndexedCoupons_;
+        std::optional<bool> useIndexedCoupons_;
 
         ext::shared_ptr<PricingEngine> engine_;
     };

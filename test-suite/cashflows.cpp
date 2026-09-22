@@ -2,6 +2,7 @@
 
 /*
  Copyright (C) 2009, 2012 StatPro Italia srl
+ Copyright (C) 2026 Kyrylo Protsenko
 
  This file is part of QuantLib, a free-software/open-source library
  for financial quantitative analysts and developers - http://quantlib.org/
@@ -26,6 +27,7 @@
 #include <ql/cashflows/floatingratecoupon.hpp>
 #include <ql/cashflows/iborcoupon.hpp>
 #include <ql/cashflows/overnightindexedcoupon.hpp>
+#include <ql/cashflows/stubiborcoupon.hpp>
 #include <ql/cashflows/couponpricer.hpp>
 #include <ql/termstructures/volatility/optionlet/constantoptionletvol.hpp>
 #include <ql/quotes/simplequote.hpp>
@@ -33,6 +35,7 @@
 #include <ql/time/daycounters/actualactual.hpp>
 #include <ql/time/schedule.hpp>
 #include <ql/indexes/ibor/euribor.hpp>
+#include <ql/indexes/ibor/bkbm.hpp>
 #include <ql/indexes/ibor/usdlibor.hpp>
 #include <ql/indexes/ibor/sofr.hpp>
 #include <ql/optional.hpp>
@@ -56,7 +59,7 @@ BOOST_AUTO_TEST_CASE(testSettings) {
     std::vector<ext::shared_ptr<CashFlow> > leg;
     leg.reserve(3);
     for (Integer i = 0; i < 3; ++i)
-        leg.push_back(ext::shared_ptr<CashFlow>(new SimpleCashFlow(1.0, today+i)));
+        leg.push_back(ext::make_shared<SimpleCashFlow>(1.0, today+i));
 
 
     #define CHECK_INCLUSION(n, days, expected) \
@@ -70,7 +73,7 @@ BOOST_AUTO_TEST_CASE(testSettings) {
     //         today's date
 
     Settings::instance().includeReferenceDateEvents() = false;
-    Settings::instance().includeTodaysCashFlows() = ext::nullopt;
+    Settings::instance().includeTodaysCashFlows() = std::nullopt;
 
     CHECK_INCLUSION(0, 0, false);
     CHECK_INCLUSION(0, 1, false);
@@ -103,7 +106,7 @@ BOOST_AUTO_TEST_CASE(testSettings) {
     //         today's date
 
     Settings::instance().includeReferenceDateEvents() = true;
-    Settings::instance().includeTodaysCashFlows() = ext::nullopt;
+    Settings::instance().includeTodaysCashFlows() = std::nullopt;
 
     CHECK_INCLUSION(0, 0, true);
     CHECK_INCLUSION(0, 1, false);
@@ -165,7 +168,7 @@ BOOST_AUTO_TEST_CASE(testSettings) {
     } while (false);
 
     // no override
-    Settings::instance().includeTodaysCashFlows() = ext::nullopt;
+    Settings::instance().includeTodaysCashFlows() = std::nullopt;
 
     CHECK_NPV(false, 2.0);
     CHECK_NPV(true, 3.0);
@@ -284,7 +287,7 @@ BOOST_AUTO_TEST_CASE(testExCouponDates) {
     // no ex-coupon dates
     Leg l1 = FixedRateLeg(schedule).withNotionals(100.0).withCouponRates(0.03, Actual360());
     for (auto& i : l1) {
-        ext::shared_ptr<Coupon> c = ext::dynamic_pointer_cast<Coupon>(i);
+        ext::shared_ptr<Coupon> c = coupon_cast(i);
         if (c->exCouponDate() != Date()) {
             BOOST_ERROR("ex-coupon date found (none expected)");
         }
@@ -294,7 +297,7 @@ BOOST_AUTO_TEST_CASE(testExCouponDates) {
     ext::shared_ptr<IborIndex> index(new Euribor3M);
     Leg l2 = IborLeg(schedule, index).withNotionals(100.0);
     for (auto& i : l2) {
-        ext::shared_ptr<Coupon> c = ext::dynamic_pointer_cast<Coupon>(i);
+        ext::shared_ptr<Coupon> c = coupon_cast(i);
         if (c->exCouponDate() != Date()) {
             BOOST_ERROR("ex-coupon date found (none expected)");
         }
@@ -306,7 +309,7 @@ BOOST_AUTO_TEST_CASE(testExCouponDates) {
                  .withCouponRates(0.03, Actual360())
                  .withExCouponPeriod(Period(2, Days), NullCalendar(), Unadjusted, false);
     for (auto& i : l5) {
-        ext::shared_ptr<Coupon> c = ext::dynamic_pointer_cast<Coupon>(i);
+        ext::shared_ptr<Coupon> c = coupon_cast(i);
         Date expected = c->accrualEndDate() - 2;
         if (c->exCouponDate() != expected) {
             BOOST_ERROR("ex-coupon date = " << c->exCouponDate() << " (" << expected
@@ -318,7 +321,7 @@ BOOST_AUTO_TEST_CASE(testExCouponDates) {
                  .withNotionals(100.0)
                  .withExCouponPeriod(Period(2, Days), NullCalendar(), Unadjusted, false);
     for (auto& i : l6) {
-        ext::shared_ptr<Coupon> c = ext::dynamic_pointer_cast<Coupon>(i);
+        ext::shared_ptr<Coupon> c = coupon_cast(i);
         Date expected = c->accrualEndDate() - 2;
         if (c->exCouponDate() != expected) {
             BOOST_ERROR("ex-coupon date = " << c->exCouponDate() << " (" << expected
@@ -332,7 +335,7 @@ BOOST_AUTO_TEST_CASE(testExCouponDates) {
                  .withCouponRates(0.03, Actual360())
                  .withExCouponPeriod(Period(2, Days), TARGET(), Preceding, false);
     for (auto& i : l7) {
-        ext::shared_ptr<Coupon> c = ext::dynamic_pointer_cast<Coupon>(i);
+        ext::shared_ptr<Coupon> c = coupon_cast(i);
         Date expected = TARGET().advance(c->accrualEndDate(), -2, Days);
         if (c->exCouponDate() != expected) {
             BOOST_ERROR("ex-coupon date = " << c->exCouponDate() << " (" << expected
@@ -344,7 +347,7 @@ BOOST_AUTO_TEST_CASE(testExCouponDates) {
                  .withNotionals(100.0)
                  .withExCouponPeriod(Period(2, Days), TARGET(), Preceding, false);
     for (auto& i : l8) {
-        ext::shared_ptr<Coupon> c = ext::dynamic_pointer_cast<Coupon>(i);
+        ext::shared_ptr<Coupon> c = coupon_cast(i);
         Date expected = TARGET().advance(c->accrualEndDate(), -2, Days);
         if (c->exCouponDate() != expected) {
             BOOST_ERROR("ex-coupon date = " << c->exCouponDate() << " (" << expected
@@ -368,7 +371,7 @@ BOOST_AUTO_TEST_CASE(testIrregularFirstCouponReferenceDatesAtEndOfMonth) {
         .withCouponRates(0.01, Actual360());
 
     ext::shared_ptr<Coupon> firstCoupon =
-        ext::dynamic_pointer_cast<Coupon>(leg.front());
+        coupon_cast(leg.front());
 
     if (firstCoupon->referencePeriodStart() != Date(31, August, 2016))
         BOOST_ERROR("Expected reference start date at end of month, "
@@ -394,7 +397,7 @@ BOOST_AUTO_TEST_CASE(testIrregularFirstCouponReferenceDatesAtEndOfCalendarMonth)
         .withCouponRates(0.01875, ActualActual(ActualActual::ISMA));
 
     ext::shared_ptr<Coupon> firstCoupon =
-        ext::dynamic_pointer_cast<Coupon>(leg.front());
+        coupon_cast(leg.front());
     if (firstCoupon->referencePeriodStart() != Date(30, September, 2017))
         BOOST_ERROR("Expected reference start date at end of calendar day of the month, "
                     "got " << firstCoupon->referencePeriodStart());
@@ -418,7 +421,7 @@ BOOST_AUTO_TEST_CASE(testIrregularLastCouponReferenceDatesAtEndOfMonth) {
             .withCouponRates(0.01, Actual360());
 
     ext::shared_ptr<Coupon> lastCoupon =
-            ext::dynamic_pointer_cast<Coupon>(leg.back());
+            coupon_cast(leg.back());
 
     if (lastCoupon->referencePeriodEnd() != Date(31, August, 2018))
         BOOST_ERROR("Expected reference end date at end of month, "
@@ -436,7 +439,7 @@ BOOST_AUTO_TEST_CASE(testPartialScheduleLegConstruction) {
                             .backwards();
     // same schedule, date based, with metadata
     Schedule schedule2(schedule.dates(), NullCalendar(), Unadjusted, Unadjusted,
-                       6 * Months, ext::nullopt, schedule.endOfMonth(),
+                       6 * Months, std::nullopt, schedule.endOfMonth(),
                        schedule.isRegular());
     // same schedule, date based, without metadata
     Schedule schedule3(schedule.dates());
@@ -616,6 +619,302 @@ BOOST_AUTO_TEST_CASE(testIborCouponKnowsWhenitHasFixed) {
         IborCoupon coupon = iborCouponForFixingDate(index, calendar.advance(today, 1, Days));
         BOOST_CHECK_EQUAL(coupon.hasFixed(), false);
     }
+}
+
+BOOST_AUTO_TEST_CASE(testInterpolatedIborStubCoupon) {
+    BOOST_TEST_MESSAGE("Testing interpolation of an irregular Ibor coupon...");
+
+    SavedSettings backup;
+    const Date today(27, May, 2026);
+    Settings::instance().evaluationDate() = today;
+
+    RelinkableHandle<YieldTermStructure> twoMonthCurve, threeMonthCurve;
+    twoMonthCurve.linkTo(flatRate(today, 0.02, Actual365Fixed()));
+    threeMonthCurve.linkTo(flatRate(today, 0.04, Actual365Fixed()));
+
+    const Calendar calendar = NewZealand();
+    auto bkbm2m = ext::make_shared<IborIndex>(
+        "Bkbm", 2 * Months, 0, NZDCurrency(), calendar, ModifiedFollowing, false,
+        Actual365Fixed(), twoMonthCurve);
+    auto bkbm3m = ext::make_shared<IborIndex>(
+        "Bkbm", 3 * Months, 0, NZDCurrency(), calendar, ModifiedFollowing, false,
+        Actual365Fixed(), threeMonthCurve);
+    const Date start(29, May, 2026);
+    const Date maturity(28, February, 2027);
+
+    Schedule schedule = MakeSchedule()
+                            .from(start)
+                            .to(maturity)
+                            .withTenor(3 * Months)
+                            .withCalendar(calendar)
+                            .withConvention(ModifiedFollowing)
+                            .backwards();
+    BOOST_REQUIRE(!schedule.isRegular(1));
+    BOOST_CHECK_EQUAL(schedule[1], Date(28, August, 2026));
+
+    StubIndexSelection convention{
+        StubIndexSelection::Interpolated, {bkbm2m, bkbm3m}};
+    Leg leg = IborLeg(schedule, bkbm3m)
+                  .withNotionals(1.0)
+                  .withIndexedCoupons(true)
+                  .withStubIndexSelection(convention);
+
+    auto coupon = ext::dynamic_pointer_cast<StubIborCoupon>(leg.front());
+    BOOST_REQUIRE(coupon);
+    BOOST_CHECK(!ext::dynamic_pointer_cast<StubIborCoupon>(leg[1]));
+
+    const Date fixingDate = coupon->fixingDate();
+    const Date shortMaturity = bkbm2m->maturityDate(start);
+    const Date longMaturity = bkbm3m->maturityDate(start);
+    BOOST_CHECK_EQUAL(shortMaturity, Date(29, July, 2026));
+    BOOST_CHECK_EQUAL(longMaturity, Date(31, August, 2026));
+
+    const Rate shortRate = bkbm2m->fixing(fixingDate);
+    const Rate longRate = bkbm3m->fixing(fixingDate);
+    const Real weight = Real(coupon->accrualEndDate() - shortMaturity) /
+                        Real(longMaturity - shortMaturity);
+    const Rate expected = shortRate + (longRate - shortRate) * weight;
+    BOOST_CHECK_SMALL(coupon->indexFixing() - expected, 1.0e-14);
+
+    StubIndexSelection closest{
+        StubIndexSelection::ClosestIndex, {bkbm2m, bkbm3m}};
+    Leg closestLeg = IborLeg(schedule, bkbm3m)
+                         .withNotionals(1.0)
+                         .withIndexedCoupons(true)
+                         .withStubIndexSelection(closest);
+    auto closestCoupon = ext::dynamic_pointer_cast<StubIborCoupon>(closestLeg.front());
+    BOOST_REQUIRE(closestCoupon);
+    BOOST_CHECK_SMALL(closestCoupon->indexFixing() - longRate, 1.0e-14);
+
+    // stub index conventions require indexed coupons...
+    BOOST_CHECK_THROW(Leg parLeg = IborLeg(schedule, bkbm3m)
+                                       .withNotionals(1.0)
+                                       .withIndexedCoupons(false)
+                                       .withStubIndexSelection(convention),
+                      Error);
+
+    // ...and candidates with distinct maturities
+    StubIndexSelection duplicate{StubIndexSelection::Interpolated, {bkbm2m, bkbm3m, bkbm3m}};
+    BOOST_CHECK_THROW(Leg duplicateLeg = IborLeg(schedule, bkbm3m)
+                                             .withNotionals(1.0)
+                                             .withIndexedCoupons(true)
+                                             .withStubIndexSelection(duplicate),
+                      Error);
+
+    // a default-constructed configuration is empty and leaves the leg alone
+    BOOST_CHECK(StubIndexSelection().empty());
+    Leg defaultLeg = IborLeg(schedule, bkbm3m)
+                         .withNotionals(1.0)
+                         .withIndexedCoupons(true)
+                         .withStubIndexSelection(StubIndexSelection());
+    BOOST_CHECK(!ext::dynamic_pointer_cast<StubIborCoupon>(defaultLeg.front()));
+
+    // configurations without usable candidates are rejected on construction
+    BOOST_CHECK_THROW(StubIndexSelection(StubIndexSelection::Interpolated, {}), Error);
+    BOOST_CHECK_THROW(
+        StubIndexSelection(StubIndexSelection::Interpolated, {bkbm2m, nullptr}), Error);
+}
+
+BOOST_AUTO_TEST_CASE(testIborStubInterpolationEndpointsAndRegularSchedule) {
+    BOOST_TEST_MESSAGE("Testing Ibor stub endpoints and unchanged regular coupons...");
+
+    SavedSettings backup;
+    const Date today(27, May, 2026);
+    Settings::instance().evaluationDate() = today;
+
+    Handle<YieldTermStructure> twoMonthCurve(flatRate(today, 0.02, Actual365Fixed()));
+    Handle<YieldTermStructure> threeMonthCurve(flatRate(today, 0.04, Actual365Fixed()));
+    auto bkbm2m = ext::make_shared<Bkbm2M>(twoMonthCurve);
+    auto bkbm3m = ext::make_shared<Bkbm3M>(threeMonthCurve);
+    const Date start(29, May, 2026);
+    StubIndexSelection convention{
+        StubIndexSelection::Interpolated, {bkbm2m, bkbm3m}};
+
+    for (const auto& endpoint : std::vector<ext::shared_ptr<IborIndex> >{bkbm2m, bkbm3m}) {
+        const Date end = endpoint->maturityDate(start);
+        Schedule endpointSchedule({start, end}, endpoint->fixingCalendar(), ModifiedFollowing,
+                                  std::nullopt, 3 * Months, DateGeneration::Backward, true,
+                                  {false});
+        Leg leg = IborLeg(endpointSchedule, bkbm3m)
+                      .withNotionals(1.0)
+                      .withIndexedCoupons(true)
+                      .withStubIndexSelection(convention);
+        auto coupon = ext::dynamic_pointer_cast<StubIborCoupon>(leg.front());
+        BOOST_REQUIRE(coupon);
+        BOOST_CHECK_SMALL(coupon->indexFixing() - endpoint->fixing(coupon->fixingDate()),
+                          1.0e-14);
+    }
+
+    const Date regularEnd = bkbm3m->maturityDate(start);
+    Schedule regularSchedule({start, regularEnd}, bkbm3m->fixingCalendar(), ModifiedFollowing,
+                             std::nullopt, 3 * Months, DateGeneration::Backward, true, {true});
+    Leg defaultLeg = IborLeg(regularSchedule, bkbm3m)
+                         .withNotionals(1.0)
+                         .withIndexedCoupons(true);
+    Leg configuredLeg = IborLeg(regularSchedule, bkbm3m)
+                            .withNotionals(1.0)
+                            .withIndexedCoupons(true)
+                            .withStubIndexSelection(convention);
+    BOOST_CHECK(!ext::dynamic_pointer_cast<StubIborCoupon>(configuredLeg.front()));
+    auto defaultCoupon = ext::dynamic_pointer_cast<IborCoupon>(defaultLeg.front());
+    auto configuredCoupon = ext::dynamic_pointer_cast<IborCoupon>(configuredLeg.front());
+    BOOST_REQUIRE(defaultCoupon && configuredCoupon);
+    BOOST_CHECK_SMALL(defaultCoupon->rate() - configuredCoupon->rate(), 1.0e-14);
+}
+
+BOOST_AUTO_TEST_CASE(testFinalAndLongIborStubCoupons) {
+    BOOST_TEST_MESSAGE("Testing final and long Ibor stub coupons...");
+
+    SavedSettings backup;
+    const Date today(27, May, 2026);
+    Settings::instance().evaluationDate() = today;
+    const Calendar calendar = NewZealand();
+
+    Handle<YieldTermStructure> oneMonthCurve(flatRate(today, 0.01, Actual365Fixed()));
+    Handle<YieldTermStructure> threeMonthCurve(flatRate(today, 0.03, Actual365Fixed()));
+    Handle<YieldTermStructure> sixMonthCurve(flatRate(today, 0.06, Actual365Fixed()));
+    auto bkbm1m = ext::make_shared<Bkbm1M>(oneMonthCurve);
+    auto bkbm3m = ext::make_shared<Bkbm3M>(threeMonthCurve);
+    auto bkbm6m = ext::make_shared<Bkbm6M>(sixMonthCurve);
+
+    Schedule finalStubSchedule(
+        {Date(29, May, 2026), Date(31, August, 2026), Date(30, October, 2026)},
+        calendar, ModifiedFollowing, std::nullopt, 3 * Months, DateGeneration::Forward,
+        true, {true, false});
+    StubIndexSelection finalConvention{
+        StubIndexSelection::Interpolated, {bkbm1m, bkbm3m}};
+    Leg finalStubLeg = IborLeg(finalStubSchedule, bkbm3m)
+                           .withNotionals(1.0)
+                           .withIndexedCoupons(true)
+                           .withStubIndexSelection(finalConvention);
+    BOOST_CHECK(!ext::dynamic_pointer_cast<StubIborCoupon>(finalStubLeg.front()));
+    auto finalCoupon = ext::dynamic_pointer_cast<StubIborCoupon>(finalStubLeg.back());
+    BOOST_REQUIRE(finalCoupon);
+
+    const Date finalStart = finalCoupon->accrualStartDate();
+    const Date oneMonthMaturity = bkbm1m->maturityDate(finalStart);
+    const Date threeMonthMaturity = bkbm3m->maturityDate(finalStart);
+    const Real finalWeight = Real(finalCoupon->accrualEndDate() - oneMonthMaturity) /
+                             Real(threeMonthMaturity - oneMonthMaturity);
+    const Rate expectedFinal =
+        bkbm1m->fixing(finalCoupon->fixingDate()) +
+        (bkbm3m->fixing(finalCoupon->fixingDate()) -
+         bkbm1m->fixing(finalCoupon->fixingDate())) * finalWeight;
+    BOOST_CHECK_SMALL(finalCoupon->indexFixing() - expectedFinal, 1.0e-14);
+
+    const Date longStart(29, May, 2026);
+    const Date longEnd(30, October, 2026);
+    Schedule longStubSchedule({longStart, longEnd}, calendar, ModifiedFollowing,
+                              std::nullopt, 3 * Months, DateGeneration::Backward, true,
+                              {false});
+    StubIndexSelection longConvention{
+        StubIndexSelection::Interpolated, {bkbm3m, bkbm6m}};
+    Leg longStubLeg = IborLeg(longStubSchedule, bkbm3m)
+                          .withNotionals(1.0)
+                          .withIndexedCoupons(true)
+                          .withStubIndexSelection(longConvention);
+    auto longCoupon = ext::dynamic_pointer_cast<StubIborCoupon>(longStubLeg.front());
+    BOOST_REQUIRE(longCoupon);
+    const Date threeMonthLongMaturity = bkbm3m->maturityDate(longStart);
+    const Date sixMonthMaturity = bkbm6m->maturityDate(longStart);
+    const Real longWeight = Real(longEnd - threeMonthLongMaturity) /
+                            Real(sixMonthMaturity - threeMonthLongMaturity);
+    const Rate expectedLong =
+        bkbm3m->fixing(longCoupon->fixingDate()) +
+        (bkbm6m->fixing(longCoupon->fixingDate()) -
+         bkbm3m->fixing(longCoupon->fixingDate())) * longWeight;
+    BOOST_CHECK_SMALL(longCoupon->indexFixing() - expectedLong, 1.0e-14);
+}
+
+BOOST_AUTO_TEST_CASE(testIborStubCouponHistoricalFixingsAndRelinking) {
+    BOOST_TEST_MESSAGE("Testing Ibor stub historical fixings and forwarding-curve relinking...");
+
+    SavedSettings backup;
+    const Date fixingDate(29, May, 2026);
+    const Date start = fixingDate;
+    const Date end(28, August, 2026);
+
+    RelinkableHandle<YieldTermStructure> twoMonthCurve, threeMonthCurve;
+    twoMonthCurve.linkTo(flatRate(fixingDate, 0.02, Actual365Fixed()));
+    threeMonthCurve.linkTo(flatRate(fixingDate, 0.04, Actual365Fixed()));
+    auto bkbm2m = ext::make_shared<Bkbm2M>(twoMonthCurve);
+    auto bkbm3m = ext::make_shared<Bkbm3M>(threeMonthCurve);
+    StubIndexSelection convention{
+        StubIndexSelection::Interpolated, {bkbm2m, bkbm3m}};
+    Schedule schedule({start, end}, bkbm3m->fixingCalendar(), ModifiedFollowing,
+                      std::nullopt, 3 * Months, DateGeneration::Backward, true, {false});
+    Leg leg = IborLeg(schedule, bkbm3m)
+                  .withNotionals(1.0)
+                  .withIndexedCoupons(true)
+                  .withStubIndexSelection(convention);
+    auto coupon = ext::dynamic_pointer_cast<StubIborCoupon>(leg.front());
+    BOOST_REQUIRE(coupon);
+
+    Settings::instance().evaluationDate() = Date(27, May, 2026);
+    const Rate initialRate = coupon->rate();
+    Flag flag;
+    flag.registerWith(coupon);
+    twoMonthCurve.linkTo(flatRate(fixingDate, 0.03, Actual365Fixed()));
+    BOOST_CHECK(flag.isUp());
+    BOOST_CHECK(std::fabs(coupon->rate() - initialRate) > 1.0e-6);
+
+    Settings::instance().evaluationDate() = Date(1, June, 2026);
+    bkbm2m->addFixing(fixingDate, 0.05);
+    bkbm3m->addFixing(fixingDate, 0.08);
+    const Date shortMaturity = bkbm2m->maturityDate(start);
+    const Date longMaturity = bkbm3m->maturityDate(start);
+    const Real weight = Real(end - shortMaturity) / Real(longMaturity - shortMaturity);
+    const Rate expected = 0.05 + (0.08 - 0.05) * weight;
+    BOOST_CHECK_SMALL(coupon->indexFixing() - expected, 1.0e-14);
+
+    bkbm2m->clearFixings();
+    bkbm3m->clearFixings();
+}
+
+BOOST_AUTO_TEST_CASE(testIborStubCouponHasFixedUsesSelectedIndices) {
+    BOOST_TEST_MESSAGE("Testing that a stub coupon has fixed only once its selected indices have...");
+
+    SavedSettings backup;
+    const Date fixingDate(29, May, 2026);
+    const Date start = fixingDate;
+    const Date end(28, August, 2026);
+    Settings::instance().evaluationDate() = fixingDate;
+
+    Handle<YieldTermStructure> twoMonthCurve(flatRate(fixingDate, 0.02, Actual365Fixed()));
+    Handle<YieldTermStructure> threeMonthCurve(flatRate(fixingDate, 0.04, Actual365Fixed()));
+    auto bkbm2m = ext::make_shared<Bkbm2M>(twoMonthCurve);
+    auto bkbm3m = ext::make_shared<Bkbm3M>(threeMonthCurve);
+    StubIndexSelection convention{
+        StubIndexSelection::Interpolated, {bkbm2m, bkbm3m}};
+    Schedule schedule({start, end}, bkbm3m->fixingCalendar(), ModifiedFollowing,
+                      std::nullopt, 3 * Months, DateGeneration::Backward, true, {false});
+    Leg leg = IborLeg(schedule, bkbm3m)
+                  .withNotionals(1.0)
+                  .withIndexedCoupons(true)
+                  .withStubIndexSelection(convention);
+    auto coupon = ext::dynamic_pointer_cast<StubIborCoupon>(leg.front());
+    BOOST_REQUIRE(coupon);
+    BOOST_CHECK_EQUAL(coupon->fixingDate(), fixingDate);
+
+    BOOST_CHECK(!coupon->hasFixed());
+
+    // The leg index's own print must not flip the stub to fixed: the coupon
+    // reads the bracketing candidates, and the 2M print is still missing.
+    // Checked through a base-class pointer so the virtual dispatch is covered.
+    bkbm3m->addFixing(fixingDate, 0.08);
+    const ext::shared_ptr<IborCoupon> asIborCoupon = coupon;
+    BOOST_CHECK(!asIborCoupon->hasFixed());
+
+    bkbm2m->addFixing(fixingDate, 0.05);
+    BOOST_CHECK(asIborCoupon->hasFixed());
+
+    const Date shortMaturity = bkbm2m->maturityDate(start);
+    const Date longMaturity = bkbm3m->maturityDate(start);
+    const Real weight = Real(end - shortMaturity) / Real(longMaturity - shortMaturity);
+    BOOST_CHECK_SMALL(coupon->indexFixing() - (0.05 + (0.08 - 0.05) * weight), 1.0e-14);
+
+    bkbm2m->clearFixings();
+    bkbm3m->clearFixings();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
